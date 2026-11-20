@@ -59,7 +59,15 @@ class Bot:
             raise ValueError("base_url must be an http(s) origin or base path")
         self._token = token
         self.base_url = base_url.rstrip("/")
-        self._client = client or httpx.Client(timeout=timeout, follow_redirects=False)
+        self._client = client or httpx.Client(
+            timeout=timeout,
+            follow_redirects=False,
+            limits=httpx.Limits(
+                max_connections=100,
+                max_keepalive_connections=20,
+                keepalive_expiry=60.0,
+            ),
+        )
         self._owns_client = client is None
         self._rate_limits = RateLimitState()
         try:

@@ -97,6 +97,19 @@ def test_poll_websocket_burst_respects_min_fetch_interval(monkeypatch):
     bot.close()
 
 
+def test_owned_client_keeps_connections_alive_for_a_minute(monkeypatch):
+    created = []
+    real_client = httpx.Client
+
+    def make_client(**kwargs):
+        created.append(kwargs)
+        return real_client(**kwargs)
+
+    monkeypatch.setattr("itd_bot.client.httpx.Client", make_client)
+    Bot("fake").close()
+    assert created[0]["limits"].keepalive_expiry == 60.0
+
+
 def test_poll_websocket_frame_wakes_loop_early(monkeypatch):
     bot = Bot("fake")
     calls = []
