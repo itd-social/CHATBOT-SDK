@@ -82,7 +82,7 @@ def test_read_before_dispatch_including_nontext_and_other_bot_command():
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         bot = Bot("token", base_url="https://example.test", client=client)
-        router = Dispatcher(bot, self_user_id="self", username="mine")
+        router = Dispatcher(bot, self_user_id="self", username="mine", typing_delay=0)
         observed = []
 
         @router.command("start")

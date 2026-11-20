@@ -62,7 +62,6 @@ def test_test_bot_ping_reads_before_answer(monkeypatch, tmp_path):
         assert calls == [
             "/api/v1/messenger/chats",
             "/api/v1/messenger/chats/c/read",
-            "/api/v1/messenger/chats/c/action",
             "/api/v1/messenger/chats/c/messages",
         ]
         assert cursor.read_text() == "6"

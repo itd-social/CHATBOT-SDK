@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import mimetypes
 import os
 import json as jsonlib
 import re
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import quote, urljoin, urlsplit
@@ -15,6 +18,8 @@ import httpx
 from .auth import RefreshSession
 from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
 from .rate_limits import RateLimitState
+
+_log = logging.getLogger(__name__)
 
 
 def _id(value: str) -> str:
@@ -54,7 +59,15 @@ class Bot:
             raise ValueError("base_url must be an http(s) origin or base path")
         self._token = token
         self.base_url = base_url.rstrip("/")
-        self._client = client or httpx.Client(timeout=timeout, follow_redirects=False)
+        self._client = client or httpx.Client(
+            timeout=timeout,
+            follow_redirects=False,
+            limits=httpx.Limits(
+                max_connections=100,
+                max_keepalive_connections=20,
+                keepalive_expiry=60.0,
+            ),
+        )
         self._owns_client = client is None
         self._rate_limits = RateLimitState()
         try:
@@ -748,8 +761,12 @@ class Bot:
             raise ProtocolError("Updates cursor moved backwards without a reset")
         return data
 
-    def websocket_events(self):
-        """Yield live frames until disconnected; use get_updates to recover gaps."""
+    def websocket_events(self, *, stop: threading.Event | None = None):
+        """Yield live frames until disconnected; use get_updates to recover gaps.
+
+        When ``stop`` is set, the generator closes the connection and returns
+        within about a second.
+        """
         try:
             import websocket
         except ImportError as exc:
@@ -770,14 +787,15 @@ class Bot:
             if conn.handshake_response.status != 101:
                 raise ProtocolError("WebSocket handshake failed")
             last_ping = last_frame = time.monotonic()
-            while True:
+            while stop is None or not stop.is_set():
                 now = time.monotonic()
                 if now - last_frame >= 15:
                     raise ProtocolError("WebSocket heartbeat timed out")
                 if now - last_ping >= 5:
                     conn.send("ping")
                     last_ping = now
-                conn.settimeout(min(5, max(0.1, 5 - (now - last_ping))))
+                timeout = min(5, max(0.1, 5 - (now - last_ping)))
+                conn.settimeout(timeout if stop is None else min(timeout, 1.0))
                 try:
                     frame = conn.recv()
                 except websocket.WebSocketTimeoutException:
@@ -806,20 +824,121 @@ class Bot:
         *,
         interval: float = 2.0,
         on_checkpoint: Callable[[int], None] | None = None,
+        websocket: bool = False,
+        workers: int = 1,
+        min_fetch_interval: float = 0.2,
     ) -> None:
-        """Process batches in order; checkpoint only after all handlers succeed."""
+        """Process batches; checkpoint only after all handlers of a batch succeed.
+
+        The next batch is requested immediately only when the previous one had
+        events and moved the cursor forward; otherwise the loop pauses for
+        ``interval``. With ``websocket=True`` a background WebSocket connection
+        wakes the loop as soon as the server pushes a frame, while events are
+        still read from ``/updates`` with the same cursor; requests for updates
+        then start at least ``min_fetch_interval`` seconds apart. ``workers > 1``
+        runs handlers of different chats in parallel threads, keeping order
+        inside each chat.
+        """
         if interval <= 0:
             raise ValueError("interval must be positive")
-        while True:
+        if min_fetch_interval < 0:
+            raise ValueError("min_fetch_interval must not be negative")
+        if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
+            raise ValueError("workers must be a positive integer")
+        if websocket:
+            self._require_websocket()
+        wake = threading.Event()
+        stop = threading.Event()
+        if websocket:
+            threading.Thread(
+                target=self._websocket_wakeups,
+                args=(wake, stop),
+                name="itd-ws-wakeup",
+                daemon=True,
+            ).start()
+        executor = ThreadPoolExecutor(workers, "itd-handler") if workers > 1 else None
+        last_fetch = None
+        try:
+            while True:
+                if websocket and last_fetch is not None:
+                    gap = last_fetch + min_fetch_interval - time.monotonic()
+                    if gap > 0:
+                        time.sleep(gap)
+                wake.clear()
+                last_fetch = time.monotonic()
+                try:
+                    batch = self.get_updates(since)
+                except RateLimitError as exc:
+                    time.sleep(min(exc.retry_after_seconds, 60))
+                    continue
+                events = batch["events"]
+                if executor is None:
+                    for event in events:
+                        handler(event)
+                else:
+                    _run_by_chat(executor, events, handler)
+                next_seq = batch["next_event_seq"]
+                if on_checkpoint is not None:
+                    on_checkpoint(next_seq)
+                advanced = next_seq > since
+                since = next_seq
+                if events and advanced:
+                    continue
+                if websocket:
+                    wake.wait(interval)
+                else:
+                    time.sleep(interval)
+        finally:
+            stop.set()
+            if executor is not None:
+                executor.shutdown(wait=False, cancel_futures=True)
+
+    @staticmethod
+    def _require_websocket() -> None:
+        try:
+            import websocket  # noqa: F401
+        except ImportError as exc:
+            raise RuntimeError(
+                'Install the websocket extra: pip install "itd-chatbot-sdk[websocket]"'
+            ) from exc
+
+    def _websocket_wakeups(self, wake: threading.Event, stop: threading.Event) -> None:
+        backoff = 1.0
+        while not stop.is_set():
             try:
-                batch = self.get_updates(since)
-            except RateLimitError as exc:
-                time.sleep(min(exc.retry_after_seconds, 60))
-                continue
-            for event in batch["events"]:
-                handler(event)
-            next_seq = batch["next_event_seq"]
-            if on_checkpoint is not None:
-                on_checkpoint(next_seq)
-            since = next_seq
-            time.sleep(interval)
+                for _ in self.websocket_events(stop=stop):
+                    wake.set()
+                    backoff = 1.0
+            except Exception as exc:
+                _log.warning("WebSocket wake-up stream failed: %s", type(exc).__name__)
+            # A reconnect can miss frames, so let /updates look for a gap.
+            wake.set()
+            if stop.wait(backoff):
+                return
+            backoff = min(backoff * 2, 30.0)
+
+
+def _run_by_chat(
+    executor: ThreadPoolExecutor,
+    events: list[dict],
+    handler: Callable[[dict], None],
+) -> None:
+    """Run handlers in parallel across chats, in order within each chat."""
+    groups: dict[str | None, list[dict]] = {}
+    for event in events:
+        chat_id = event.get("chat_id")
+        key = chat_id if isinstance(chat_id, str) else None
+        groups.setdefault(key, []).append(event)
+    if len(groups) <= 1:
+        for event in events:
+            handler(event)
+        return
+
+    def run(group: list[dict]) -> None:
+        for event in group:
+            handler(event)
+
+    futures = [executor.submit(run, group) for group in groups.values()]
+    wait(futures)
+    for future in futures:
+        future.result()
