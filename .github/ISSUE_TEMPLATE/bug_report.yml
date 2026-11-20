@@ -1,0 +1,29 @@
+name: Ошибка
+description: Сообщить о воспроизводимой проблеме в SDK
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Не добавляйте токены, cookie, файлы сессии или личные сообщения.
+  - type: input
+    id: version
+    attributes:
+      label: Версии SDK и Python
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как воспроизвести
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемый и фактический результат
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Обезличенные сообщения об ошибке
