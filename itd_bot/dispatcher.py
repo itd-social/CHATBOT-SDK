@@ -42,13 +42,14 @@ class CommandContext:
 class Dispatcher:
     """Local command router. ITD does not expose a confirmed server-side command API.
 
-    ``read_mode`` controls read marks: ``"background"`` (default) queues them in
-    one background thread, coalesced per chat, so the reply is not delayed;
-    ``"blocking"`` marks each message before its handler and skips the handler
-    if that fails; ``"off"`` sends no read marks. ``typing_delay`` is how long a
-    handler may run before ``typing`` is shown; ``0`` sends it before the
-    handler starts. Call ``close()`` (or use the dispatcher as a context
-    manager) to flush queued read marks when handling events manually.
+    ``read_mode`` controls read marks: ``"blocking"`` (default) marks each
+    incoming message before its handler and skips the handler if that fails;
+    ``"background"`` queues read marks in one background thread, coalesced per
+    chat, so the reply does not wait for them, and only logs failures;
+    ``"off"`` sends no read marks. ``typing_delay`` is how long a handler may run
+    before ``typing`` is shown; ``0`` sends it before the handler starts. Call
+    ``close()`` (or use the dispatcher as a context manager) to flush queued
+    read marks when handling events manually.
     """
 
     def __init__(
@@ -60,7 +61,7 @@ class Dispatcher:
         auto_typing: bool = True,
         typing_interval: float = 4.0,
         typing_delay: float = 0.5,
-        read_mode: str = "background",
+        read_mode: str = "blocking",
     ):
         if not self_user_id:
             raise ValueError("self_user_id is required to prevent self-replies")

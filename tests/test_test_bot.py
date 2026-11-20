@@ -7,7 +7,7 @@ import httpx
 from itd_bot import Bot, Dispatcher
 
 
-def test_test_bot_ping_reads_and_answers_without_typing(monkeypatch, tmp_path):
+def test_test_bot_ping_reads_before_answer(monkeypatch, tmp_path):
     spec = importlib.util.spec_from_file_location(
         "test_bot_example", Path(__file__).parents[1] / "examples" / "test_bot.py"
     )
@@ -50,7 +50,6 @@ def test_test_bot_ping_reads_and_answers_without_typing(monkeypatch, tmp_path):
                     },
                 }
             )
-            self.close()
             kwargs["on_checkpoint"](6)
 
         monkeypatch.setattr(Dispatcher, "run_polling", one_event)
@@ -60,9 +59,9 @@ def test_test_bot_ping_reads_and_answers_without_typing(monkeypatch, tmp_path):
         cursor = tmp_path / "cursor"
         monkeypatch.setenv("ITD_CURSOR_FILE", str(cursor))
         module.main()
-        assert calls[0] == "/api/v1/messenger/chats"
-        assert sorted(calls[1:]) == [
-            "/api/v1/messenger/chats/c/messages",
+        assert calls == [
+            "/api/v1/messenger/chats",
             "/api/v1/messenger/chats/c/read",
+            "/api/v1/messenger/chats/c/messages",
         ]
         assert cursor.read_text() == "6"

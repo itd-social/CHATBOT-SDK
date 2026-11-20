@@ -156,7 +156,7 @@ def test_background_read_does_not_block_and_coalesces():
 
     with httpx.Client(transport=httpx.MockTransport(transport)) as client:
         bot = Bot("token", base_url="https://example.test", client=client)
-        with Dispatcher(bot, self_user_id="self") as router:
+        with Dispatcher(bot, self_user_id="self", read_mode="background") as router:
 
             @router.on_message
             def reply(event, message):

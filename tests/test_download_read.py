@@ -82,13 +82,7 @@ def test_read_before_dispatch_including_nontext_and_other_bot_command():
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         bot = Bot("token", base_url="https://example.test", client=client)
-        router = Dispatcher(
-            bot,
-            self_user_id="self",
-            username="mine",
-            read_mode="blocking",
-            typing_delay=0,
-        )
+        router = Dispatcher(bot, self_user_id="self", username="mine", typing_delay=0)
         observed = []
 
         @router.command("start")
@@ -115,7 +109,7 @@ def test_read_before_dispatch_including_nontext_and_other_bot_command():
         ]
 
 
-def test_failed_blocking_read_stops_before_handler():
+def test_failed_read_stops_before_handler():
     with httpx.Client(
         transport=httpx.MockTransport(
             lambda req: httpx.Response(403, json={"message": "denied"})
@@ -124,7 +118,6 @@ def test_failed_blocking_read_stops_before_handler():
         router = Dispatcher(
             Bot("token", base_url="https://example.test", client=client),
             self_user_id="self",
-            read_mode="blocking",
         )
         observed = []
 
