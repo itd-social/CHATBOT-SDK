@@ -132,7 +132,7 @@ def test_typing_throttled_per_chat():
             self.calls.append((chat, action))
 
     bot = FakeBot()
-    router = Dispatcher(bot, self_user_id="self")
+    router = Dispatcher(bot, self_user_id="self", typing_delay=0)
     for chat in ("a", "a", "b"):
         with router._typing(chat):
             pass
