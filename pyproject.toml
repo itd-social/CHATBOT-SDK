@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "itd-chatbot-sdk"
-version = "1.0.0"
+version = "1.0.1"
 description = "Unofficial Python SDK for the ITD messenger"
 readme = "README.md"
 license = "BSL-1.0"
