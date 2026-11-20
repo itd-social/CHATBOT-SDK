@@ -47,6 +47,56 @@ def test_poll_pauses_only_after_empty_batch(monkeypatch):
     bot.close()
 
 
+def test_poll_pauses_when_cursor_does_not_advance(monkeypatch):
+    bot = Bot("fake")
+    calls, sleeps = [], []
+
+    def updates(cursor):
+        calls.append(cursor)
+        return batch([{"type": "x"}], cursor)
+
+    def sleep(seconds):
+        sleeps.append((seconds, len(calls)))
+        raise Stop
+
+    monkeypatch.setattr(bot, "get_updates", updates)
+    monkeypatch.setattr("itd_bot.client.time.sleep", sleep)
+    with pytest.raises(Stop):
+        bot.poll(7, lambda event: None)
+    assert calls == [7] and sleeps == [(2.0, 1)]
+    bot.close()
+
+
+def test_poll_websocket_burst_respects_min_fetch_interval(monkeypatch):
+    bot = Bot("fake")
+    starts = []
+
+    def updates(cursor):
+        if len(starts) == 4:
+            raise Stop
+        starts.append(time.monotonic())
+        return batch([], 0)
+
+    def frames(*, stop):
+        while not stop.is_set():
+            yield {"type": "typing"}
+            time.sleep(0.005)
+
+    monkeypatch.setattr(bot, "_require_websocket", lambda: None)
+    monkeypatch.setattr(bot, "get_updates", updates)
+    monkeypatch.setattr(bot, "websocket_events", frames)
+    began = time.monotonic()
+    with pytest.raises(Stop):
+        bot.poll(0, lambda e: None, interval=30, websocket=True, min_fetch_interval=0.1)
+    gaps = [b - a for a, b in zip(starts, starts[1:])]
+    # Windows clocks tick about every 16 ms.
+    assert len(gaps) == 3 and min(gaps) >= 0.08
+    assert time.monotonic() - began < 5
+    with pytest.raises(ValueError):
+        bot.poll(0, lambda e: None, min_fetch_interval=-1)
+    bot.close()
+
+
 def test_poll_websocket_frame_wakes_loop_early(monkeypatch):
     bot = Bot("fake")
     calls = []

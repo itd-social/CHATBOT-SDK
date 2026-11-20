@@ -818,18 +818,23 @@ class Bot:
         on_checkpoint: Callable[[int], None] | None = None,
         websocket: bool = False,
         workers: int = 1,
+        min_fetch_interval: float = 0.2,
     ) -> None:
         """Process batches; checkpoint only after all handlers of a batch succeed.
 
-        After a non-empty batch the next one is requested immediately; the
-        ``interval`` pause applies only to empty batches. With ``websocket=True``
-        a background WebSocket connection wakes the loop as soon as the server
-        pushes a frame, while events are still read from ``/updates`` with the
-        same cursor. ``workers > 1`` runs handlers of different chats in
-        parallel threads, keeping order inside each chat.
+        The next batch is requested immediately only when the previous one had
+        events and moved the cursor forward; otherwise the loop pauses for
+        ``interval``. With ``websocket=True`` a background WebSocket connection
+        wakes the loop as soon as the server pushes a frame, while events are
+        still read from ``/updates`` with the same cursor; requests for updates
+        then start at least ``min_fetch_interval`` seconds apart. ``workers > 1``
+        runs handlers of different chats in parallel threads, keeping order
+        inside each chat.
         """
         if interval <= 0:
             raise ValueError("interval must be positive")
+        if min_fetch_interval < 0:
+            raise ValueError("min_fetch_interval must not be negative")
         if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
             raise ValueError("workers must be a positive integer")
         if websocket:
@@ -844,9 +849,15 @@ class Bot:
                 daemon=True,
             ).start()
         executor = ThreadPoolExecutor(workers, "itd-handler") if workers > 1 else None
+        last_fetch = None
         try:
             while True:
+                if websocket and last_fetch is not None:
+                    gap = last_fetch + min_fetch_interval - time.monotonic()
+                    if gap > 0:
+                        time.sleep(gap)
                 wake.clear()
+                last_fetch = time.monotonic()
                 try:
                     batch = self.get_updates(since)
                 except RateLimitError as exc:
@@ -861,8 +872,9 @@ class Bot:
                 next_seq = batch["next_event_seq"]
                 if on_checkpoint is not None:
                     on_checkpoint(next_seq)
+                advanced = next_seq > since
                 since = next_seq
-                if events:
+                if events and advanced:
                     continue
                 if websocket:
                     wake.wait(interval)
