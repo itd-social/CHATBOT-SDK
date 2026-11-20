@@ -31,7 +31,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
           GH_REPO: ${{ github.repository }}
         run: test "$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq '.isDraft or .isPrerelease')" = false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ inputs.tag }}
       - uses: actions/setup-python@v5
