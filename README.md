@@ -1,9 +1,9 @@
 ![ITD ChatBot SDK](.github/assets/banner.png)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%2B-3776ab" alt="Python 3.10 и новее">
-  <img src="https://img.shields.io/badge/version-1.0.0-3776ab" alt="Версия 1.0.0">
-  <img src="https://img.shields.io/badge/license-BSL--1.0-blue" alt="Boost Software License 1.0">
+  <a href="https://pypi.org/project/itd-chatbot-sdk/"><img src="https://img.shields.io/pypi/pyversions/itd-chatbot-sdk" alt="Поддерживаемые версии Python"></a>
+  <a href="https://pypi.org/project/itd-chatbot-sdk/"><img src="https://img.shields.io/pypi/v/itd-chatbot-sdk" alt="Версия пакета в PyPI"></a>
+  <a href="https://github.com/itd-social/CHATBOT-SDK/blob/main/LICENSE"><img src="https://img.shields.io/github/license/itd-social/CHATBOT-SDK" alt="Лицензия проекта"></a>
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@ SDK использует API веб-клиента ИТД и работает о
 
 ## Установка
 
-Python 3.10 или новее:
+Поддерживаемые версии Python указаны в значке выше:
 
 ```sh
 python -m pip install itd-chatbot-sdk
