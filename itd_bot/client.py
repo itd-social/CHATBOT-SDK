@@ -18,6 +18,8 @@ import httpx
 from .auth import RefreshSession
 from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
 from .rate_limits import RateLimitState
+from .post import Post
+from .user import User
 
 _log = logging.getLogger(__name__)
 
@@ -342,6 +344,208 @@ class Bot:
             client_message_id=client_message_id,
         )
 
+    def send_photo(
+        self,
+        chat_id: str,
+        source: str | os.PathLike | bytes,
+        *,
+        caption: str = "",
+        compress: bool = False,
+        filename: str | None = None,
+        mime: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> dict:
+        """Send an image, optionally preparing a JPEG like the web client."""
+        if compress:
+            from .media import prepare_photo
+
+            original_name = filename or (
+                Path(source).name if not isinstance(source, bytes) else None
+            )
+            data, prepared_name, dimensions = prepare_photo(source)
+            is_gif = data.startswith((b"GIF87a", b"GIF89a"))
+            filename = (
+                original_name
+                if is_gif and original_name
+                else (
+                    Path(original_name).stem + ".jpg"
+                    if original_name
+                    else prepared_name
+                )
+            )
+            mime = "image/gif" if is_gif else "image/jpeg"
+            source = data
+            metadata = {**dimensions, **(metadata or {})}
+        return self.send_file(
+            chat_id,
+            source,
+            text=caption,
+            filename=filename,
+            mime=mime,
+            metadata=metadata,
+            **kwargs,
+        )
+
+    def send_video(
+        self,
+        chat_id: str,
+        source: str | os.PathLike | bytes,
+        *,
+        caption: str = "",
+        compress: bool = False,
+        **kwargs: Any,
+    ) -> dict:
+        """Send a video; optional compression requires the ffmpeg executable."""
+        if not compress:
+            return self.send_file(chat_id, source, text=caption, **kwargs)
+        import subprocess
+        import tempfile
+
+        import shutil
+
+        executable = shutil.which("ffmpeg")
+        if executable is None:
+            raise RuntimeError("Video compression requires ffmpeg in PATH")
+        if not isinstance(source, bytes) and not Path(source).is_file():
+            raise FileNotFoundError(source)
+        try:
+            with tempfile.TemporaryDirectory(prefix="itd-video-") as directory:
+                if isinstance(source, bytes):
+                    input_path = Path(directory) / "input"
+                    input_path.write_bytes(source)
+                else:
+                    input_path = Path(source).resolve()
+                output_path = Path(directory) / "video.mp4"
+                subprocess.run(
+                    [
+                        executable,
+                        "-nostdin",
+                        "-hide_banner",
+                        "-loglevel",
+                        "error",
+                        "-y",
+                        "-i",
+                        str(input_path),
+                        "-c:v",
+                        "libx264",
+                        "-crf",
+                        "28",
+                        "-preset",
+                        "medium",
+                        "-c:a",
+                        "aac",
+                        "-movflags",
+                        "+faststart",
+                        str(output_path),
+                    ],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
+                name = kwargs.pop("filename", None)
+                name = Path(name or input_path.name).stem + ".mp4"
+                kwargs.pop("mime", None)
+                return self.send_file(
+                    chat_id,
+                    output_path,
+                    text=caption,
+                    filename=name,
+                    mime="video/mp4",
+                    **kwargs,
+                )
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError("Video compression failed") from exc
+
+    def send_music(
+        self,
+        chat_id: str,
+        source: str | os.PathLike | bytes,
+        *,
+        caption: str = "",
+        **kwargs: Any,
+    ) -> dict:
+        """Send an audio file without transcoding."""
+        return self.send_file(chat_id, source, text=caption, **kwargs)
+
+    def send_audio(
+        self,
+        chat_id: str,
+        source: str | os.PathLike | bytes,
+        *,
+        caption: str = "",
+        **kwargs: Any,
+    ) -> dict:
+        return self.send_music(chat_id, source, caption=caption, **kwargs)
+
+    def get_user(self, user_id_or_username: str) -> User:
+        """Fetch a user profile by ID or username; optional @ is accepted."""
+        if not isinstance(user_id_or_username, str):
+            raise ValueError("user ID or username must be a non-empty string")
+        identifier = user_id_or_username.removeprefix("@")
+        return User.from_dict(
+            self.api_request("GET", f"/api/users/{_id(identifier)}"), bot=self
+        )
+
+    def get_me(self) -> User:
+        """Fetch the authenticated account's profile."""
+        return User.from_dict(self.api_request("GET", "/api/users/me"), bot=self)
+
+    def get_post(self, post_id: str) -> Post:
+        """Fetch an accessible post by ID."""
+        result = self.api_request("GET", f"/api/posts/{_id(post_id)}")
+        data = result.get("data") if isinstance(result, dict) else None
+        if (
+            not isinstance(data, dict)
+            or not isinstance(data.get("id"), str)
+            or not data["id"]
+        ):
+            raise ProtocolError("Invalid post response")
+        if data["id"] != post_id:
+            raise ProtocolError("Post response ID does not match request")
+        return Post(id=data["id"], raw=data, _bot=self)
+
+    def get_follow_status(self, user_ids: list[str]) -> dict:
+        """Return whether this account follows each user ID."""
+        if not user_ids:
+            return {}
+        for user_id in user_ids:
+            _id(user_id)
+        result = self.api_request(
+            "POST", "/api/users/follow-status", json={"userIds": user_ids}
+        )
+        if not isinstance(result, dict) or not isinstance(result.get("data"), dict):
+            raise ProtocolError("Invalid follow status response")
+        return result["data"]
+
+    def download_banner(self, url: str, destination: str | os.PathLike) -> Path:
+        """Download a profile banner from ITD's CDN without sending authentication."""
+        parsed = urlsplit(url)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != "cdn.xn--d1ah4a.com"
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.port not in (None, 443)
+            or parsed.fragment
+        ):
+            raise ValueError("Banner URL must use the ITD CDN over HTTPS")
+        target = Path(destination)
+        with httpx.Client(
+            follow_redirects=False, timeout=30.0, trust_env=False
+        ) as client:
+            with client.stream("GET", url) as response:
+                response.raise_for_status()
+                with target.open("xb") as output:
+                    try:
+                        for chunk in response.iter_bytes():
+                            output.write(chunk)
+                    except BaseException:
+                        output.close()
+                        target.unlink(missing_ok=True)
+                        raise
+        return target
+
     def get_chats(self, *, limit: int | None = None, before: str | None = None) -> dict:
         return self.request(
             "GET",
@@ -573,6 +777,34 @@ class Bot:
         reaction = {"type": "emoji", "emoji": emoji}
         if reaction not in selected:
             selected.append(reaction)
+        return self.set_reactions(
+            chat_id,
+            message_id,
+            selected,
+            expected_version=current["reaction_version"],
+            operation_id=str(uuid.uuid4()),
+        )
+
+    def remove_reaction(self, chat_id: str, message_id: str, emoji: str) -> Any:
+        """Remove an emoji while preserving the account's other reactions."""
+        if not isinstance(emoji, str) or not emoji:
+            raise ValueError("emoji must be a non-empty string")
+        current = self.get_reactions(chat_id, message_id)
+        if (
+            not isinstance(current, dict)
+            or not isinstance(current.get("reaction_version"), str)
+            or not isinstance(current.get("reactions"), list)
+        ):
+            raise ProtocolError("Invalid reactions response")
+        selected = []
+        for item in current["reactions"]:
+            if not isinstance(item, dict) or not isinstance(item.get("reaction"), dict):
+                raise ProtocolError("Invalid reaction entry")
+            if item.get("chosen") is True and item["reaction"] != {
+                "type": "emoji",
+                "emoji": emoji,
+            }:
+                selected.append(item["reaction"])
         return self.set_reactions(
             chat_id,
             message_id,
