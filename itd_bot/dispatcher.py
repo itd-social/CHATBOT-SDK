@@ -7,9 +7,15 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
+import json
+import os
+import tempfile
+from pathlib import Path
 from typing import Any, Callable
 
 from .client import Bot
+from .context import EventContext, MessageContext
+from .errors import ProtocolError
 
 _COMMAND = re.compile(r"^/([A-Za-z0-9_]{1,32})(?:@([A-Za-z0-9_]{1,64}))?(?=\s|$)")
 _READ_MODES = frozenset({"background", "blocking", "off"})
@@ -17,26 +23,9 @@ _log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class CommandContext:
-    bot: Bot
-    event: dict[str, Any]
-    message: dict[str, Any]
+class CommandContext(MessageContext):
     command: str
     args: str
-
-    @property
-    def chat_id(self) -> str:
-        return self.event["chat_id"]
-
-    def reply(self, text: str, **kwargs: Any) -> Any:
-        return self.bot.send_message(
-            self.chat_id, text, reply_to_id=self.message["message_id"], **kwargs
-        )
-
-    def reply_formatted(self, content: Any, **kwargs: Any) -> Any:
-        return self.bot.send_formatted(
-            self.chat_id, content, reply_to_id=self.message["message_id"], **kwargs
-        )
 
 
 class Dispatcher:
@@ -77,12 +66,20 @@ class Dispatcher:
         self.username = username.removeprefix("@").lower() if username else None
         self._commands: dict[str, Callable[[CommandContext], Any]] = {}
         self._fallback: Callable[[dict[str, Any], dict[str, Any]], Any] | None = None
+        self._message_handler: Callable[[MessageContext], Any] | None = None
+        self._photo_handler: Callable[[MessageContext], Any] | None = None
         self._event_handlers: dict[str, Callable[[dict[str, Any]], Any]] = {}
         self._typing_lock = threading.Lock()
         self._typing_last: dict[str, float] = {}
         self._read_lock = threading.Lock()
         self._pending_reads: dict[str, str] = {}
         self._read_executor: ThreadPoolExecutor | None = None
+
+    @classmethod
+    def from_bot(cls, bot: Bot, **kwargs: Any) -> Dispatcher:
+        profile = bot.get_me()
+        kwargs.setdefault("username", profile.username)
+        return cls(bot, self_user_id=profile.id, **kwargs)
 
     def __enter__(self) -> Dispatcher:
         return self
@@ -198,8 +195,51 @@ class Dispatcher:
     def on_message(
         self, handler: Callable[[dict[str, Any], dict[str, Any]], Any]
     ) -> Callable:
+        if self._message_handler is not None:
+            raise ValueError("message handler already registered")
         self._fallback = handler
         return handler
+
+    def message(self) -> Callable:
+        def register(handler: Callable[[MessageContext], Any]) -> Callable:
+            if self._message_handler is not None or self._fallback is not None:
+                raise ValueError("message handler already registered")
+            self._message_handler = handler
+            return handler
+
+        return register
+
+    def photo(self) -> Callable:
+        def register(handler: Callable[[MessageContext], Any]) -> Callable:
+            if self._photo_handler is not None:
+                raise ValueError("photo handler already registered")
+            self._photo_handler = handler
+            return handler
+
+        return register
+
+    def _event_decorator(self, *event_types: str) -> Callable:
+        def register(handler: Callable[[EventContext], Any]) -> Callable:
+            if any(name in self._event_handlers for name in event_types):
+                raise ValueError("event handler already registered")
+
+            def wrapped(event: dict[str, Any]) -> Any:
+                return handler(EventContext(self.bot, event))
+
+            for name in event_types:
+                self._event_handlers[name] = wrapped
+            return handler
+
+        return register
+
+    def reaction(self) -> Callable:
+        return self._event_decorator("message_reaction", "message_reactions")
+
+    def edited(self) -> Callable:
+        return self._event_decorator("message_edited")
+
+    def deleted(self) -> Callable:
+        return self._event_decorator("message_deleted", "messages_deleted")
 
     def handle(self, event: dict[str, Any]) -> None:
         typ = event.get("type")
@@ -251,13 +291,92 @@ class Dispatcher:
                             )
                         )
                     continue
-            if self._fallback:
+            context = MessageContext(self.bot, event, message)
+            if self._photo_handler and context.photo:
+                with self._typing(event["chat_id"]):
+                    self._photo_handler(context)
+            elif self._message_handler:
+                with self._typing(event["chat_id"]):
+                    self._message_handler(context)
+            elif self._fallback:
                 with self._typing(event["chat_id"]):
                     self._fallback(event, message)
 
-    def run_polling(self, since: int, **kwargs: Any) -> None:
-        """Run ``Bot.poll`` with this dispatcher; kwargs are passed through."""
+    def run_polling(
+        self,
+        since: int | None = None,
+        *,
+        state_path: str | os.PathLike | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run polling; optionally persist the cursor after each successful batch."""
+        if state_path is None:
+            if since is None:
+                raise ValueError("provide since or state_path")
+            try:
+                self.bot.poll(since, self.handle, **kwargs)
+            finally:
+                self.close()
+            return
+        path = Path(state_path)
+        if since is not None and path.exists():
+            raise ValueError("since cannot be combined with an existing state file")
+        if path.exists():
+            try:
+                state = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise ProtocolError("Cannot read polling state") from exc
+            if (
+                not isinstance(state, dict)
+                or state.get("user_id") != self.self_user_id
+                or state.get("version") != 1
+                or state.get("base_url") != self.bot.base_url
+            ):
+                raise ProtocolError(
+                    "Polling state belongs to another account or has an unknown format"
+                )
+            cursor = state.get("cursor")
+        else:
+            if since is not None:
+                cursor = since
+            else:
+                chats = self.bot.get_chats(limit=1)
+                if not isinstance(chats, dict):
+                    raise ProtocolError("Chat list has no valid event cursor")
+                cursor = chats.get("event_seq")
+        if isinstance(cursor, bool) or not isinstance(cursor, int) or cursor < 0:
+            raise ProtocolError("Polling state has an invalid cursor")
+        callback = kwargs.pop("on_checkpoint", None)
+
+        def save(value: int, *, notify: bool = True) -> None:
+            if callback is not None and notify:
+                callback(value)
+            state = {
+                "version": 1,
+                "user_id": self.self_user_id,
+                "base_url": self.bot.base_url,
+                "cursor": value,
+            }
+            name = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    encoding="utf-8",
+                    dir=path.parent,
+                    prefix=path.name + ".",
+                    suffix=".tmp",
+                    delete=False,
+                ) as output:
+                    name = output.name
+                    json.dump(state, output)
+                os.replace(name, path)
+            finally:
+                if name and os.path.exists(name):
+                    os.unlink(name)
+
         try:
-            self.bot.poll(since, self.handle, **kwargs)
+            if not path.exists():
+                save(cursor, notify=False)
+            self.bot.poll(cursor, self.handle, on_checkpoint=save, **kwargs)
         finally:
             self.close()

@@ -82,8 +82,8 @@ def main():
                 ctx,
                 {
                     "chat_id": ctx.chat_id,
-                    "sender_id": ctx.message["sender_id"],
-                    "message_id": ctx.message["message_id"],
+                    "sender_id": ctx.sender_id,
+                    "message_id": ctx.message_id,
                 },
             )
 
@@ -114,7 +114,7 @@ def main():
 
         @command("react")
         def react(ctx):
-            bot.add_reaction(ctx.chat_id, ctx.message["message_id"], ctx.args or "👍")
+            ctx.react(ctx.args or "👍")
             ctx.reply("Реакция отправлена")
 
         @command("format")
@@ -176,14 +176,10 @@ def main():
             body = json.loads(parts[2]) if len(parts) == 3 else None
             show(ctx, bot.api_request(parts[0].upper(), parts[1], json=body))
 
-        @router.on_message
-        def fallback(event, message):
-            if message["sender_id"] == tester_id:
-                bot.send_message(
-                    event["chat_id"],
-                    "Используйте /help для списка команд",
-                    reply_to_id=message["message_id"],
-                )
+        @router.message()
+        def fallback(ctx):
+            if ctx.sender_id == tester_id:
+                ctx.reply("Используйте /help для списка команд")
 
         if cursor_path.exists():
             since = int(cursor_path.read_text(encoding="utf-8").strip())

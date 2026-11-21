@@ -41,6 +41,46 @@ def test_chunked_file_and_send():
         assert progress == [(5242880, 5242883), (5242883, 5242883)]
 
 
+@pytest.mark.parametrize("send", [False, True])
+def test_experimental_file_preserves_bytes_and_independent_metadata(tmp_path, send):
+    payload = b"ID3\x00\x01audio data"
+    source = tmp_path / "track.mp3"
+    source.write_bytes(payload)
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.path)
+        if request.url.path.endswith("/init"):
+            assert json.loads(request.content) == {
+                "mime": "video/mp4",
+                "size": len(payload),
+                "totalParts": 1,
+            }
+            return httpx.Response(200, json={"uploadId": "up"})
+        if request.url.path.endswith("/part/0"):
+            assert request.content == payload
+            return httpx.Response(204)
+        if request.url.path.endswith("/finalize"):
+            assert json.loads(request.content) == {"filename": "photo.png"}
+            return httpx.Response(200, json={"fileId": "file-1"})
+        if request.url.path.endswith("/messages"):
+            assert json.loads(request.content)["attachments"] == ["file-1"]
+            return httpx.Response(200, json={"message_id": "sent"})
+        raise AssertionError(request.url)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        bot = Bot("token", base_url="https://example.test", client=client)
+        if send:
+            result = bot.send_file(
+                "chat", source, filename="photo.png", mime="video/mp4"
+            )
+            assert result == {"message_id": "sent"}
+        else:
+            result = bot.upload_file(source, filename="photo.png", mime="video/mp4")
+            assert result == {"fileId": "file-1"}
+    assert any(path.endswith("/messages") for path in seen) is send
+
+
 def test_failed_part_does_not_finalize():
     paths = []
 

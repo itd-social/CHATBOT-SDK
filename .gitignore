@@ -19,3 +19,6 @@ htmlcov/
 .itd-refresh-session.json
 .itd-refresh-test-cursor
 .itd-refresh-test-cursor.tmp
+
+.bot-state.json
+.bot-state.json.*.tmp

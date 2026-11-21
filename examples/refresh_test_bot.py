@@ -20,11 +20,7 @@ def main():
     session_path = os.environ.get("ITD_SESSION_FILE", SESSION_PATH)
     cursor_path = Path(os.environ.get("ITD_CURSOR_FILE", CURSOR_PATH))
     with Bot.from_refresh_token(refresh_token, session_path=session_path) as bot:
-        profile = bot.api_request("GET", "/api/users/me")
-        self_id = profile.get("id") if isinstance(profile, dict) else None
-        if not isinstance(self_id, str) or not self_id:
-            raise ProtocolError("Profile response does not contain an ID")
-        router = Dispatcher(bot, self_user_id=self_id)
+        router = Dispatcher.from_bot(bot)
 
         @router.command("start")
         def start(ctx):
@@ -38,11 +34,9 @@ def main():
         def echo(ctx):
             ctx.reply(ctx.args or "Укажите текст после /echo")
 
-        @router.on_message
-        def other(event, message):
-            bot.send_message(
-                event["chat_id"], "Отправьте /start", reply_to_id=message["message_id"]
-            )
+        @router.message()
+        def other(ctx):
+            ctx.reply("Отправьте /start")
 
         if cursor_path.exists():
             cursor = int(cursor_path.read_text(encoding="utf-8").strip())

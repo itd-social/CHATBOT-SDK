@@ -26,6 +26,12 @@ def test_semantic_release_updates_version_and_changelog(tmp_path, message, expec
     repo.mkdir()
     for filename in ("pyproject.toml", "CHANGELOG.md"):
         shutil.copy2(root / filename, repo / filename)
+    changelog_path = repo / "CHANGELOG.md"
+    existing = changelog_path.read_text(encoding="utf-8")
+    changelog_path.write_text(
+        existing.split("<!-- version list -->", 1)[0] + "<!-- version list -->\n",
+        encoding="utf-8",
+    )
     env = os.environ.copy()
     env.update(
         {

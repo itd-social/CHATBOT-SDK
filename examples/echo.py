@@ -1,34 +1,15 @@
-"""Пример: ITD_TOKEN, ITD_SELF_USER_ID и ITD_SINCE должны быть заданы явно."""
+"""Эхо-бот с refresh-сессией и сохранением курсора."""
 
 import os
-from itd_bot import Bot
 
-self_id = os.environ["ITD_SELF_USER_ID"]
-since = int(os.environ["ITD_SINCE"])
+from itd_bot import Bot, Dispatcher
 
-with Bot(os.environ["ITD_TOKEN"]) as bot:
+with Bot.from_refresh_token(os.environ["ITD_REFRESH_TOKEN"]) as bot:
+    router = Dispatcher.from_bot(bot)
 
-    def handle(event):
+    @router.message()
+    def echo(ctx):
+        if ctx.text:
+            ctx.reply("Эхо: " + ctx.text)
 
-        messages = (
-            [event["message"]]
-            if event["type"] == "new_message"
-            else event.get("messages", [])
-            if event["type"] == "new_messages"
-            else []
-        )
-        for message in messages:
-            if message.get("sender_id") == self_id:
-                continue
-            bot.mark_read(event["chat_id"], message["message_id"])
-            if not message.get("text"):
-                continue
-            bot.send_message(
-                event["chat_id"],
-                "Эхо: " + message["text"],
-                reply_to_id=message["message_id"],
-            )
-
-    bot.poll(
-        since, handle, on_checkpoint=lambda cursor: print("cursor:", cursor, flush=True)
-    )
+    router.run_polling(state_path=".bot-state.json")
