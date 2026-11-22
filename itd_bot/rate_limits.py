@@ -105,14 +105,14 @@ class RateLimitState:
         return fallback
 
     def check(self, method: str, path: str) -> None:
-        key = self._bucket_key(method, path)
+        keys = (self._bucket_key(method, path), self._key(method, path), ("*", "*"))
         with self._lock:
             now = self._monotonic()
-            candidates = [self._deadlines.get(key), self._deadlines.get(("*", "*"))]
+            candidates = [self._deadlines.get(key) for key in keys]
             active = [item for item in candidates if item is not None and item[0] > now]
             if not active:
-                self._deadlines.pop(key, None)
-                self._deadlines.pop(("*", "*"), None)
+                for key in keys:
+                    self._deadlines.pop(key, None)
                 return
             deadline, scope = max(active, key=lambda item: item[0])
             seconds = max(1, math.ceil(deadline - now))
@@ -159,11 +159,12 @@ class RateLimitState:
                 errors=detail.get("errors"),
             )
         scope = response.headers.get("X-RateLimit-Scope")
-        key = (
-            ("*", "*")
-            if scope in {"ip_flood", "global_flood"}
-            else self._bucket_key(method, path)
-        )
+        if scope in {"ip_flood", "global_flood"}:
+            key = ("*", "*")
+        elif scope in {"new_recipients_hour", "new_recipients_day"}:
+            key = self._key(method, path)
+        else:
+            key = self._bucket_key(method, path)
         with self._lock:
             now = self._monotonic()
             for old_key, (deadline, _) in list(self._deadlines.items()):
@@ -292,7 +293,7 @@ class RateLimiter(RateLimitState):
     def acquire(self, method: str, path: str, *, cost: int = 1) -> None:
         if type(cost) is not int or cost < 1:
             raise ValueError("cost must be a positive integer")
-        key = self._bucket_key(method, path)
+        keys = (self._bucket_key(method, path), self._key(method, path), ("*", "*"))
         group = self._group(method, path)
         if not self.config.wait:
             self.check(method, path)
@@ -303,11 +304,7 @@ class RateLimiter(RateLimitState):
                     if self._deadlines[old][0] <= now:
                         del self._deadlines[old]
                 delay = max(
-                    (
-                        self._deadlines[k][0] - now
-                        for k in (key, ("*", "*"))
-                        if k in self._deadlines
-                    ),
+                    (self._deadlines[k][0] - now for k in keys if k in self._deadlines),
                     default=0.0,
                 )
                 if self.config.enabled:

@@ -463,3 +463,28 @@ def test_literal_unread_route_is_not_mistaken_for_chat_id():
     assert clock.now == 0
     gate.acquire("GET", "/api/v1/messenger/chats/unread")
     assert clock.now == 8
+
+
+@pytest.mark.parametrize("scope", ["new_recipients_hour", "new_recipients_day"])
+@pytest.mark.parametrize("target", ["chats/new/messages", "users/new/messages"])
+def test_new_recipient_cooldown_does_not_block_existing_correspondence(scope, target):
+    clock = Clock()
+    gate = limiter(clock)
+    path = "/api/v1/messenger/" + target
+    with pytest.raises(RateLimitError):
+        gate.observe(
+            httpx.Response(
+                429, headers={"Retry-After": "3600", "X-RateLimit-Scope": scope}
+            ),
+            "POST",
+            path,
+        )
+    gate.acquire("POST", "/api/v1/messenger/chats/existing/messages")
+    assert clock.now == 0
+    gate.acquire("GET", path)
+    assert clock.now == 0
+    with pytest.raises(RateLimitError) as error:
+        gate.check("POST", path + "?ignored=1")
+    assert error.value.scope == scope and error.value.locally_blocked
+    gate.acquire("POST", path)
+    assert clock.now == 3600
