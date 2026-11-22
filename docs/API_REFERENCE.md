@@ -4,7 +4,7 @@
 
 ## Клиент и ошибки
 
-`Bot(token, *, base_url="https://xn--d1ah4a.com", timeout=30.0, client=None)` принимает токен без префикса `Bearer`. Используйте `with Bot(...) as bot:` или вызовите `close()`. Переданный `httpx.Client` остаётся во владении вызывающего кода. `set_token(token)` заменяет access-токен. `Bot.from_refresh_token(refresh_token, session_path=".itd-session.json")` включает автоматическое обновление и сохранение ротаций; `session_path=None` хранит их только в памяти. `refresh_count` — число успешных обновлений в этом экземпляре. Подробнее: [авторизация](AUTH.md).
+`Bot(token, *, base_url="https://xn--d1ah4a.com", timeout=30.0, client=None, limiter=None)` принимает токен без префикса `Bearer`. Используйте `with Bot(...) as bot:` или вызовите `close()`. Переданный `httpx.Client` остаётся во владении вызывающего кода. `set_token(token)` заменяет access-токен. `Bot.from_refresh_token(refresh_token, session_path=".itd-session.json")` включает автоматическое обновление и сохранение ротаций; `session_path=None` хранит их только в памяти. `refresh_count` — число успешных обновлений в этом экземпляре. Подробнее: [авторизация](AUTH.md).
 
 `APIError` содержит `status`, `code`, `errors`, `retry_after`. Ошибки транспорта и таймауты исходят от `httpx`; `ProtocolError` означает неподходящий ответ. `ResetRequired` наследует `ProtocolError` и содержит `response`. В режиме refresh SDK может повторить запрос после HTTP 401 один раз; подробности и ограничения описаны в [авторизации](AUTH.md).
 
@@ -70,3 +70,7 @@
 ## Низкоуровневые запросы
 
 `request(method, path, params=None, json=None)` отправляет запрос к `/api/v1/messenger`. `api_request(method, path, params=None, json=None, content=None, files=None, headers=None, raw=False)` обращается к путям `/api/` и `/v1/` настроенного сервера. Только один из `json`, `content`, `files` можно указать одновременно. `raw=True` возвращает успешный `httpx.Response`; перенаправления отключены. Вызывающий код отвечает за корректность экспериментальных запросов.
+
+## Ограничитель запросов
+
+`Bot(..., limiter=None)` использует общий для origin ограничитель в текущем процессе. `RateLimiter(RateLimitConfig(...))` позволяет настроить ожидание, общий бюджет и интервалы групп. Один объект можно передать нескольким ботам. Состав настроек, область действия, отключение ожидания и ошибки описаны в [RATE_LIMITS.md](RATE_LIMITS.md). `UploadQuotaError(APIError)` выделяет исчерпание бюджета загрузок из обычных временных `RateLimitError`.

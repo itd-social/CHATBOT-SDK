@@ -1,6 +1,7 @@
 from .client import Bot, APIError, ProtocolError, ResetRequired
 from .dispatcher import CommandContext, Dispatcher
-from .errors import RateLimitError, SessionStorageError
+from .errors import RateLimitError, SessionStorageError, UploadQuotaError
+from .rate_limits import RateLimitConfig, RateLimiter
 from .formatting import Text, utf16_length
 from .user import User
 from .post import Post
@@ -16,6 +17,9 @@ __all__ = [
     "SentMessage",
     "APIError",
     "RateLimitError",
+    "UploadQuotaError",
+    "RateLimitConfig",
+    "RateLimiter",
     "ProtocolError",
     "ResetRequired",
     "SessionStorageError",

@@ -17,7 +17,7 @@ import httpx
 
 from .auth import RefreshSession
 from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
-from .rate_limits import RateLimitState
+from .rate_limits import RateLimiter, default_limiter
 from .post import Post
 from .user import User
 
@@ -46,6 +46,7 @@ class Bot:
         client: httpx.Client | None = None,
         refresh_token: str | None = None,
         session_path: str | os.PathLike | None = ".itd-session.json",
+        limiter: RateLimiter | None = None,
     ):
         if token is None and refresh_token is None:
             raise ValueError("A bearer token or refresh token is required")
@@ -71,7 +72,11 @@ class Bot:
             ),
         )
         self._owns_client = client is None
-        self._rate_limits = RateLimitState()
+        self._rate_limits = (
+            limiter
+            if limiter is not None
+            else default_limiter(f"{parts.scheme.lower()}://{parts.netloc.lower()}")
+        )
         try:
             self._refresh_session = (
                 RefreshSession(
@@ -178,8 +183,17 @@ class Bot:
             for key in request_headers
         ):
             raise ValueError("authentication and host headers are managed by the SDK")
-        self._rate_limits.check(method, path)
+        cost = 1
+        if (
+            method.upper() == "POST"
+            and path.endswith("/messages/forward")
+            and isinstance(json, Mapping)
+        ):
+            message_ids = json.get("message_ids")
+            if isinstance(message_ids, list):
+                cost = max(1, len(message_ids))
         access_token, generation = self._access_state()
+        self._rate_limits.acquire(method, path, cost=cost)
         request_headers.update(
             {
                 "Authorization": "Bearer " + access_token,
@@ -207,7 +221,7 @@ class Bot:
                 "Bearer "
                 + self._refresh_session.refresh_after_401(access_token, generation)
             )
-            self._rate_limits.check(method, path)
+            self._rate_limits.acquire(method, path, cost=cost)
             response = self._client.request(
                 method,
                 self.base_url + path,
@@ -534,7 +548,11 @@ class Bot:
         with httpx.Client(
             follow_redirects=False, timeout=30.0, trust_env=False
         ) as client:
+            self._rate_limits.acquire("GET", parsed.path)
             with client.stream("GET", url) as response:
+                if response.status_code == 429:
+                    response.read()
+                    self._rate_limits.observe(response, "GET", parsed.path)
                 response.raise_for_status()
                 with target.open("xb") as output:
                     try:
@@ -910,7 +928,7 @@ class Bot:
             "X-Requested-With": "XMLHttpRequest",
         }
         for attempt in range(2):
-            self._rate_limits.check("GET", resolved.path)
+            self._rate_limits.acquire("GET", resolved.path)
             with self._client.stream(
                 "GET", resolved.geturl(), headers=headers, follow_redirects=False
             ) as response:
@@ -1008,13 +1026,28 @@ class Bot:
         parts = urlsplit(self.base_url)
         scheme = "wss" if parts.scheme == "https" else "ws"
         url = f"{scheme}://{parts.netloc}{parts.path}/api/v1/messenger/ws?capabilities=chat_settings_v2"
-        conn = websocket.create_connection(
-            url,
-            timeout=5,
-            redirect_limit=0,
-            subprotocols=["itd.messenger.v1", "bearer." + self._access_token()],
-            origin=f"{parts.scheme}://{parts.netloc}",
-        )
+        access_token = self._access_token()
+        self._rate_limits.acquire("GET", "/api/v1/messenger/ws")
+        try:
+            conn = websocket.create_connection(
+                url,
+                timeout=5,
+                redirect_limit=0,
+                subprotocols=["itd.messenger.v1", "bearer." + access_token],
+                origin=f"{parts.scheme}://{parts.netloc}",
+            )
+        except websocket.WebSocketBadStatusException as exc:
+            if exc.status_code == 429:
+                self._rate_limits.observe(
+                    httpx.Response(
+                        429,
+                        headers=exc.resp_headers or {},
+                        content=exc.resp_body or b"",
+                    ),
+                    "GET",
+                    "/api/v1/messenger/ws",
+                )
+            raise
         try:
             if conn.handshake_response.status != 101:
                 raise ProtocolError("WebSocket handshake failed")
