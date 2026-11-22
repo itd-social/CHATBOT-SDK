@@ -62,6 +62,14 @@ _ROUTE_PATTERNS = tuple(
 )
 
 
+_EPSILON = 1e-9
+
+
+def _bucket_scope(group: str, method: str, path: str) -> str:
+    """Return the token-bucket key for a limited group."""
+    return group
+
+
 class RateLimitState:
     """Track observed server cooldowns for one client instance."""
 
@@ -85,6 +93,9 @@ class RateLimitState:
 
     def acquire(self, method: str, path: str, *, cost: int = 1) -> None:
         self.check(method, path)
+
+    def _on_group_cooldown(self, method: str, path: str, deadline: float) -> None:
+        """Called under the lock after a 429 set a cooldown for a limited group."""
 
     def _seconds(self, value: str | None, fallback: int) -> int:
         if value is not None:
@@ -140,7 +151,9 @@ class RateLimitState:
         raw = response.headers.get("Retry-After")
         fallback = 2 if is_message else 30
         body_retry = detail.get("retryAfter", detail.get("retry_after"))
-        seconds = max(self._seconds(raw, 0), self._seconds(str(body_retry), 0))
+        coarse = max(self._seconds(raw, 0), self._seconds(str(body_retry), 0))
+        seconds = coarse
+        precise: float | None = None
         try:
             milliseconds = float(
                 response.headers.get("X-RateLimit-Retry-After-Ms", "0")
@@ -149,6 +162,8 @@ class RateLimitState:
             milliseconds = 0
         if math.isfinite(milliseconds) and milliseconds > 0:
             seconds = max(seconds, math.ceil(milliseconds / 1000))
+            if coarse <= math.ceil(milliseconds / 1000):
+                precise = milliseconds / 1000
         seconds = seconds or fallback
         if detail.get("code") == "UPLOAD_QUOTA_EXCEEDED":
             raise UploadQuotaError(
@@ -176,10 +191,14 @@ class RateLimitState:
                 )
                 if removable is not None:
                     self._deadlines.pop(removable, None)
-            deadline = now + seconds
+            is_group = key[0] == "group"
+            wait = precise if is_group and precise is not None else seconds
+            deadline = now + wait
             existing = self._deadlines.get(key)
             if existing is None or deadline > existing[0]:
                 self._deadlines[key] = (deadline, scope)
+            if is_group:
+                self._on_group_cooldown(method, path, self._deadlines[key][0])
         code = detail.get("code") or "RATE_LIMIT_EXCEEDED"
         message = str(
             detail.get("detail")
@@ -204,12 +223,16 @@ class RateLimitConfig:
 
     enabled: bool = True
     wait: bool = True
-    requests_per_minute: int | None = 50
+    requests_per_minute: int | None = 80
     min_interval: float = 0.0
     send_interval: float = 2.1
     reaction_interval: float = 1.1
     edit_interval: float = 6.2
     delete_for_me_interval: float = 3.2
+    send_burst: int = 4
+    edit_burst: int = 4
+    reaction_burst: int = 25
+    delete_for_me_burst: int = 8
 
     def __post_init__(self) -> None:
         if type(self.enabled) is not bool or type(self.wait) is not bool:
@@ -233,14 +256,26 @@ class RateLimitConfig:
                 or value < 0
             ):
                 raise ValueError(f"{name} must be a finite nonnegative number")
+        for name in (
+            "send_burst",
+            "edit_burst",
+            "reaction_burst",
+            "delete_for_me_burst",
+        ):
+            value = getattr(self, name)
+            if type(value) is not int or value < 1:
+                raise ValueError(f"{name} must be an integer >= 1")
 
 
 class RateLimiter(RateLimitState):
     """Coordinate request starts and observed cooldowns across threads.
 
-    Message rules conservatively share capacity across all chats and accounts
-    using this instance. Waiting never reserves capacity ahead of other callers.
-    An already dispatched request cannot be recalled after a concurrent 429.
+    Message groups use a token bucket (GCRA): ``*_interval`` is the refill period
+    of one token and ``*_burst`` the bucket size, so ``burst=1`` keeps a fixed
+    interval. Buckets conservatively share capacity across all chats and
+    accounts using this instance. Waiting never reserves capacity ahead of other
+    callers. An already dispatched request cannot be recalled after a concurrent
+    429.
     """
 
     def __init__(
@@ -256,7 +291,7 @@ class RateLimiter(RateLimitState):
         self._sleep = sleep
         self._starts: deque[float] = deque()
         self._next_start = 0.0
-        self._groups: dict[str, float] = {}
+        self._buckets: dict[str, float] = {}
 
     @staticmethod
     def _group(method: str, path: str) -> str | None:
@@ -290,11 +325,39 @@ class RateLimiter(RateLimitState):
                 return method, template
         return method, path
 
+    def _bucket_params(self, group: str) -> tuple[float, int]:
+        return (
+            getattr(self.config, group + "_interval"),
+            getattr(self.config, group + "_burst"),
+        )
+
+    def _bucket_delay(self, scope: str, group: str, now: float, cost: int) -> float:
+        interval, burst = self._bucket_params(group)
+        tat = self._buckets.get(scope, 0.0)
+        if cost > burst:
+            return max(0.0, tat - now)
+        return max(0.0, tat - now + (cost - burst) * interval)
+
+    def _bucket_spend(self, scope: str, group: str, now: float, cost: int) -> None:
+        interval, _ = self._bucket_params(group)
+        self._buckets[scope] = max(self._buckets.get(scope, 0.0), now) + cost * interval
+
+    def _on_group_cooldown(self, method: str, path: str, deadline: float) -> None:
+        group = self._group(method, path)
+        if group is None:
+            return
+        scope = _bucket_scope(group, method, path)
+        interval, burst = self._bucket_params(group)
+        self._buckets[scope] = max(
+            self._buckets.get(scope, 0.0), deadline + (burst - 1) * interval
+        )
+
     def acquire(self, method: str, path: str, *, cost: int = 1) -> None:
         if type(cost) is not int or cost < 1:
             raise ValueError("cost must be a positive integer")
         keys = (self._bucket_key(method, path), self._key(method, path), ("*", "*"))
         group = self._group(method, path)
+        scope = _bucket_scope(group, method, path) if group else None
         if not self.config.wait:
             self.check(method, path)
         while True:
@@ -311,22 +374,20 @@ class RateLimiter(RateLimitState):
                     while self._starts and self._starts[0] + 60 <= now:
                         self._starts.popleft()
                     delay = max(delay, self._next_start - now)
-                    if group:
-                        delay = max(delay, self._groups.get(group, 0) - now)
+                    if group and scope:
+                        delay = max(delay, self._bucket_delay(scope, group, now, cost))
                     if (
                         self.config.requests_per_minute is not None
                         and len(self._starts) >= self.config.requests_per_minute
                     ):
                         delay = max(delay, self._starts[0] + 60 - now)
-                if delay <= 0:
+                if delay <= _EPSILON:
                     if self.config.enabled:
                         if self.config.requests_per_minute is not None:
                             self._starts.append(now)
                         self._next_start = now + self.config.min_interval
-                        if group:
-                            self._groups[group] = now + cost * getattr(
-                                self.config, group + "_interval"
-                            )
+                        if group and scope:
+                            self._bucket_spend(scope, group, now, cost)
                     return
             if not self.config.wait:
                 self.check(method, path)
