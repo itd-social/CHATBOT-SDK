@@ -46,7 +46,7 @@ def test_default_settings_and_origin_sharing():
         config.edit_burst,
         config.reaction_burst,
         config.delete_for_me_burst,
-    ) == (4, 4, 25, 8)
+    ) == (4, 4, 12, 8)
     assert default_limiter("https://one.test") is default_limiter("https://one.test")
     assert default_limiter("https://one.test") is not default_limiter(
         "https://two.test"
@@ -514,7 +514,7 @@ SEND = "/api/v1/messenger/chats/a/messages"
 BUCKETS = [
     ("POST", SEND, 4, 2.1),
     ("PATCH", "/api/v1/messenger/chats/a/messages/x", 4, 6.2),
-    ("PUT", "/api/v1/messenger/chats/a/messages/x/reactions", 25, 1.1),
+    ("PUT", "/api/v1/messenger/chats/a/messages/x/reactions", 12, 1.1),
     ("POST", "/api/v1/messenger/chats/a/messages/delete-for-me", 8, 3.2),
 ]
 

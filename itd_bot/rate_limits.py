@@ -231,7 +231,7 @@ class RateLimitConfig:
     delete_for_me_interval: float = 3.2
     send_burst: int = 4
     edit_burst: int = 4
-    reaction_burst: int = 25
+    reaction_burst: int = 12
     delete_for_me_burst: int = 8
 
     def __post_init__(self) -> None:
