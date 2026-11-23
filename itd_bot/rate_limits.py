@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import timezone
 from email.utils import parsedate_to_datetime
 from typing import Callable
+from urllib.parse import unquote
 
 import httpx
 
@@ -63,11 +64,30 @@ _ROUTE_PATTERNS = tuple(
 
 
 _EPSILON = 1e-9
+_PRUNE_INTERVAL = 5.0
+_MAX_BUCKETS = 4096
+_CHAT_PATH = re.compile(r"/api/v1/messenger/chats/([^/]+)/")
+_USER_PATH = re.compile(r"/api/v1/messenger/users/([^/]+)/")
+
+BucketScope = tuple[str, ...]
 
 
-def _bucket_scope(group: str, method: str, path: str) -> str:
-    """Return the token-bucket key for a limited group."""
-    return group
+def _bucket_scope(group: str, method: str, path: str) -> BucketScope:
+    """Return the account-relative token-bucket scope for a limited group.
+
+    Sending, forwarding and reactions are counted per chat; sending to a user is
+    a separate scope per user ID; editing and deleting for oneself are shared by
+    the whole account until their per-chat independence is measured.
+    """
+    path = path.split("?", 1)[0]
+    if group in {"send", "reaction"}:
+        chat = _CHAT_PATH.match(path)
+        if chat:
+            return group, "chat", unquote(chat.group(1))
+        user = _USER_PATH.match(path)
+        if user:
+            return group, "user", unquote(user.group(1))
+    return (group,)
 
 
 class RateLimitState:
@@ -88,13 +108,17 @@ class RateLimitState:
     def _key(method: str, path: str) -> tuple[str, str]:
         return method.upper(), path.split("?", 1)[0]
 
-    def _bucket_key(self, method: str, path: str) -> tuple[str, str]:
+    def _bucket_key(
+        self, method: str, path: str, account: str | None = None
+    ) -> tuple[str, ...]:
         return self._key(method, path)
 
-    def acquire(self, method: str, path: str, *, cost: int = 1) -> None:
-        self.check(method, path)
+    def acquire(
+        self, method: str, path: str, *, cost: int = 1, account: str | None = None
+    ) -> None:
+        self.check(method, path, account)
 
-    def _on_group_cooldown(self, method: str, path: str, deadline: float) -> None:
+    def _on_group_cooldown(self, key: tuple[str, ...], deadline: float) -> None:
         """Called under the lock after a 429 set a cooldown for a limited group."""
 
     def _seconds(self, value: str | None, fallback: int) -> int:
@@ -115,8 +139,12 @@ class RateLimitState:
                 pass
         return fallback
 
-    def check(self, method: str, path: str) -> None:
-        keys = (self._bucket_key(method, path), self._key(method, path), ("*", "*"))
+    def check(self, method: str, path: str, account: str | None = None) -> None:
+        keys = (
+            self._bucket_key(method, path, account),
+            self._key(method, path),
+            ("*", "*"),
+        )
         with self._lock:
             now = self._monotonic()
             candidates = [self._deadlines.get(key) for key in keys]
@@ -134,7 +162,13 @@ class RateLimitState:
             locally_blocked=True,
         )
 
-    def observe(self, response: httpx.Response, method: str, path: str) -> None:
+    def observe(
+        self,
+        response: httpx.Response,
+        method: str,
+        path: str,
+        account: str | None = None,
+    ) -> None:
         if response.status_code != 429:
             return
         try:
@@ -179,7 +213,7 @@ class RateLimitState:
         elif scope in {"new_recipients_hour", "new_recipients_day"}:
             key = self._key(method, path)
         else:
-            key = self._bucket_key(method, path)
+            key = self._bucket_key(method, path, account)
         with self._lock:
             now = self._monotonic()
             for old_key, (deadline, _) in list(self._deadlines.items()):
@@ -198,7 +232,7 @@ class RateLimitState:
             if existing is None or deadline > existing[0]:
                 self._deadlines[key] = (deadline, scope)
             if is_group:
-                self._on_group_cooldown(method, path, self._deadlines[key][0])
+                self._on_group_cooldown(key, self._deadlines[key][0])
         code = detail.get("code") or "RATE_LIMIT_EXCEEDED"
         message = str(
             detail.get("detail")
@@ -272,10 +306,12 @@ class RateLimiter(RateLimitState):
 
     Message groups use a token bucket (GCRA): ``*_interval`` is the refill period
     of one token and ``*_burst`` the bucket size, so ``burst=1`` keeps a fixed
-    interval. Buckets conservatively share capacity across all chats and
-    accounts using this instance. Waiting never reserves capacity ahead of other
-    callers. An already dispatched request cannot be recalled after a concurrent
-    429.
+    interval. Buckets are kept per ``account`` passed to ``acquire`` and
+    ``observe`` (``None`` is one shared account): sending, forwarding and
+    reactions per chat, sending to a user per user ID, editing and deleting for
+    oneself per account. The request budget and IP cooldowns stay shared by the
+    whole instance. Waiting never reserves capacity ahead of other callers. An
+    already dispatched request cannot be recalled after a concurrent 429.
     """
 
     def __init__(
@@ -291,7 +327,8 @@ class RateLimiter(RateLimitState):
         self._sleep = sleep
         self._starts: deque[float] = deque()
         self._next_start = 0.0
-        self._buckets: dict[str, float] = {}
+        self._buckets: dict[tuple[str | None, BucketScope], float] = {}
+        self._last_prune = 0.0
 
     @staticmethod
     def _group(method: str, path: str) -> str | None:
@@ -315,10 +352,12 @@ class RateLimiter(RateLimitState):
             return "delete_for_me"
         return None
 
-    def _bucket_key(self, method: str, path: str) -> tuple[str, str]:
+    def _bucket_key(
+        self, method: str, path: str, account: str | None = None
+    ) -> tuple[str, ...]:
         group = self._group(method, path)
         if group:
-            return "group", group
+            return ("group", account, *_bucket_scope(group, method, path))
         method, path = self._key(method, path)
         for candidate_method, pattern, template in _ROUTE_PATTERNS:
             if method == candidate_method and pattern.fullmatch(path):
@@ -331,41 +370,79 @@ class RateLimiter(RateLimitState):
             getattr(self.config, group + "_burst"),
         )
 
-    def _bucket_delay(self, scope: str, group: str, now: float, cost: int) -> float:
-        interval, burst = self._bucket_params(group)
-        tat = self._buckets.get(scope, 0.0)
+    def _bucket_delay(
+        self, key: tuple[str | None, BucketScope], now: float, cost: int
+    ) -> float:
+        interval, burst = self._bucket_params(key[1][0])
+        tat = self._buckets.get(key, 0.0)
         if cost > burst:
             return max(0.0, tat - now)
         return max(0.0, tat - now + (cost - burst) * interval)
 
-    def _bucket_spend(self, scope: str, group: str, now: float, cost: int) -> None:
-        interval, _ = self._bucket_params(group)
-        self._buckets[scope] = max(self._buckets.get(scope, 0.0), now) + cost * interval
+    def _bucket_spend(
+        self, key: tuple[str | None, BucketScope], now: float, cost: int
+    ) -> None:
+        interval, _ = self._bucket_params(key[1][0])
+        self._buckets[key] = max(self._buckets.get(key, 0.0), now) + cost * interval
+        self._trim_buckets(now, force=len(self._buckets) > _MAX_BUCKETS, keep=key)
 
-    def _on_group_cooldown(self, method: str, path: str, deadline: float) -> None:
-        group = self._group(method, path)
-        if group is None:
+    def _trim_buckets(
+        self,
+        now: float,
+        *,
+        force: bool = False,
+        keep: tuple[str | None, BucketScope] | None = None,
+    ) -> None:
+        """Drop fully recovered buckets; cap the number of remaining ones.
+
+        A bucket with ``tat <= now`` behaves exactly like a missing one, so it is
+        safe to forget. Called under the lock.
+        """
+        if not force and now - self._last_prune < _PRUNE_INTERVAL:
             return
-        scope = _bucket_scope(group, method, path)
-        interval, burst = self._bucket_params(group)
-        self._buckets[scope] = max(
-            self._buckets.get(scope, 0.0), deadline + (burst - 1) * interval
+        self._last_prune = now
+        for key in [k for k, tat in self._buckets.items() if tat <= now]:
+            del self._buckets[key]
+        excess = len(self._buckets) - _MAX_BUCKETS
+        if excess > 0:
+            oldest = sorted(
+                (key for key in self._buckets if key != keep),
+                key=self._buckets.__getitem__,
+            )
+            for key in oldest[: excess + _MAX_BUCKETS // 4]:
+                del self._buckets[key]
+
+    def _on_group_cooldown(self, key: tuple[str, ...], deadline: float) -> None:
+        bucket = (key[1], tuple(key[2:]))
+        interval, burst = self._bucket_params(bucket[1][0])
+        self._buckets[bucket] = max(
+            self._buckets.get(bucket, 0.0), deadline + (burst - 1) * interval
+        )
+        self._trim_buckets(
+            self._monotonic(), force=len(self._buckets) > _MAX_BUCKETS, keep=bucket
         )
 
-    def acquire(self, method: str, path: str, *, cost: int = 1) -> None:
+    def acquire(
+        self, method: str, path: str, *, cost: int = 1, account: str | None = None
+    ) -> None:
         if type(cost) is not int or cost < 1:
             raise ValueError("cost must be a positive integer")
-        keys = (self._bucket_key(method, path), self._key(method, path), ("*", "*"))
+        keys = (
+            self._bucket_key(method, path, account),
+            self._key(method, path),
+            ("*", "*"),
+        )
         group = self._group(method, path)
-        scope = _bucket_scope(group, method, path) if group else None
+        bucket = (account, _bucket_scope(group, method, path)) if group else None
         if not self.config.wait:
-            self.check(method, path)
+            self.check(method, path, account)
         while True:
             with self._lock:
                 now = self._monotonic()
                 for old in list(self._deadlines):
                     if self._deadlines[old][0] <= now:
                         del self._deadlines[old]
+                self._trim_buckets(now)
                 delay = max(
                     (self._deadlines[k][0] - now for k in keys if k in self._deadlines),
                     default=0.0,
@@ -374,8 +451,8 @@ class RateLimiter(RateLimitState):
                     while self._starts and self._starts[0] + 60 <= now:
                         self._starts.popleft()
                     delay = max(delay, self._next_start - now)
-                    if group and scope:
-                        delay = max(delay, self._bucket_delay(scope, group, now, cost))
+                    if bucket:
+                        delay = max(delay, self._bucket_delay(bucket, now, cost))
                     if (
                         self.config.requests_per_minute is not None
                         and len(self._starts) >= self.config.requests_per_minute
@@ -386,11 +463,11 @@ class RateLimiter(RateLimitState):
                         if self.config.requests_per_minute is not None:
                             self._starts.append(now)
                         self._next_start = now + self.config.min_interval
-                        if group and scope:
-                            self._bucket_spend(scope, group, now, cost)
+                        if bucket:
+                            self._bucket_spend(bucket, now, cost)
                     return
             if not self.config.wait:
-                self.check(method, path)
+                self.check(method, path, account)
                 raise RateLimitError(
                     retry_after_seconds=max(1, math.ceil(delay)), locally_blocked=True
                 )

@@ -138,6 +138,12 @@ class RefreshSession:
             self._generation += 1
 
     @property
+    def subject(self) -> str | None:
+        """Account ID (JWT ``sub``) once known; stays the same across refreshes."""
+        with self._lock:
+            return self._subject
+
+    @property
     def refresh_count(self) -> int:
         with self._lock:
             return self._refresh_count

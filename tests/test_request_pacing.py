@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import time
 
 import httpx
 import pytest
@@ -30,6 +31,16 @@ FIXED_INTERVALS = {
     "reaction_burst": 1,
     "delete_for_me_burst": 1,
 }
+
+
+def jwt(sub=None, **claims):
+    import base64
+    import json
+
+    if sub is not None:
+        claims["sub"] = sub
+    payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode()
+    return "header." + payload.rstrip("=") + ".signature"
 
 
 def limiter(clock, **options):
@@ -70,15 +81,15 @@ def test_rolling_window_counts_errors_and_all_routes():
     "paths,method,interval",
     [
         (
-            ["chats/a/messages", "users/b/messages", "chats/c/messages/forward"],
+            ["chats/a/messages", "chats/a/messages/forward", "chats/a/messages"],
             "POST",
             2.1,
         ),
         (["chats/a/messages/x", "chats/b/messages/y"], "PATCH", 6.2),
-        (["chats/a/messages/x/reactions", "chats/b/messages/y/reactions"], "PUT", 1.1),
+        (["chats/a/messages/x/reactions", "chats/a/messages/y/reactions"], "PUT", 1.1),
     ],
 )
-def test_groups_share_capacity_across_paths(paths, method, interval):
+def test_groups_share_capacity_within_their_scope(paths, method, interval):
     clock = Clock()
     gate = limiter(clock, min_interval=0, **FIXED_INTERVALS)
     for path in paths:
@@ -110,7 +121,7 @@ def test_cooldown_crosses_methods_and_ids_but_not_groups():
         )
     gate.acquire("GET", "/api/v1/messenger/chats/a/messages")
     assert clock.now == 0
-    gate.acquire("POST", "/api/v1/messenger/users/b/messages")
+    gate.acquire("POST", "/api/v1/messenger/chats/a/messages/forward")
     assert clock.now == 8
 
 
@@ -179,12 +190,13 @@ def test_shared_limiter_coordinates_clients_and_does_not_retry_writes():
         return httpx.Response(200, json={})
 
     with httpx.Client(transport=httpx.MockTransport(transport)) as http:
-        a = Bot("fake", base_url="https://example.test", client=http, limiter=gate)
-        b = Bot("other", base_url="https://example.test", client=http, limiter=gate)
+        token = jwt("same-account")
+        a = Bot(token, base_url="https://example.test", client=http, limiter=gate)
+        b = Bot(token, base_url="https://example.test", client=http, limiter=gate)
         with pytest.raises(RateLimitError):
             a.send_message("a", "hello")
         assert len(seen) == 1
-        b.send_message_to_user("b", "hello")
+        b.send_message("a", "hello")
     assert [t for t, _ in seen] == [0, 5]
 
 
@@ -519,11 +531,32 @@ BUCKETS = [
 ]
 
 
-def test_bucket_scope_is_only_the_group_for_now():
+def test_bucket_scope_separates_chats_users_and_account_wide_groups():
     from itd_bot.rate_limits import _bucket_scope
 
-    assert _bucket_scope("send", "POST", SEND) == "send"
-    assert _bucket_scope("send", "POST", SEND.replace("/a/", "/b/")) == "send"
+    root = "/api/v1/messenger/"
+    assert _bucket_scope("send", "POST", SEND) == ("send", "chat", "a")
+    assert _bucket_scope("send", "POST", SEND.replace("/a/", "/b/")) == (
+        "send",
+        "chat",
+        "b",
+    )
+    assert _bucket_scope("send", "POST", SEND + "/forward") == ("send", "chat", "a")
+    assert _bucket_scope("send", "POST", root + "users/u/messages") == (
+        "send",
+        "user",
+        "u",
+    )
+    assert _bucket_scope("reaction", "PUT", root + "chats/a/messages/x/reactions") == (
+        "reaction",
+        "chat",
+        "a",
+    )
+    assert _bucket_scope("edit", "PATCH", root + "chats/a/messages/x") == ("edit",)
+    assert _bucket_scope(
+        "delete_for_me", "POST", root + "chats/a/messages/delete-for-me"
+    ) == ("delete_for_me",)
+    assert _bucket_scope("send", "POST", SEND + "?x=1") == ("send", "chat", "a")
 
 
 @pytest.mark.parametrize("method,path,burst,interval", BUCKETS)
@@ -709,9 +742,9 @@ def test_concurrent_callers_never_exceed_burst_per_interval():
     grants = []
     spend = gate._bucket_spend
 
-    def record(scope, group, now, cost):
+    def record(key, now, cost):
         grants.append(now)
-        spend(scope, group, now, cost)
+        spend(key, now, cost)
 
     gate._bucket_spend = record
     barrier = threading.Barrier(12)
@@ -728,3 +761,315 @@ def test_concurrent_callers_never_exceed_burst_per_interval():
     for first, later in zip(grants, grants[4:]):
         assert later - first >= 2.1 - 1e-6
     assert clock.now >= 8 * 2.1 - 1e-6
+
+
+ROOT = "/api/v1/messenger/"
+
+
+def send_to(chat):
+    return f"{ROOT}chats/{chat}/messages"
+
+
+def edit_in(chat, message="x"):
+    return f"{ROOT}chats/{chat}/messages/{message}"
+
+
+def too_many(seconds="8", **headers):
+    return httpx.Response(429, headers={"Retry-After": seconds, **headers})
+
+
+def test_exhausted_send_bucket_in_one_chat_does_not_delay_another_chat():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    for _ in range(4):
+        gate.acquire("POST", send_to("a"))
+    for _ in range(4):
+        gate.acquire("POST", send_to("b"))
+    assert clock.now == 0 and clock.sleeps == []
+    gate.acquire("POST", send_to("a"))
+    assert clock.sleeps == pytest.approx([2.1])
+
+
+def test_send_to_user_has_its_own_bucket_per_user():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    for _ in range(4):
+        gate.acquire("POST", f"{ROOT}users/u/messages")
+    for _ in range(4):
+        gate.acquire("POST", f"{ROOT}users/v/messages")
+    for _ in range(4):
+        gate.acquire("POST", send_to("u"))
+    assert clock.now == 0
+    gate.acquire("POST", f"{ROOT}users/u/messages")
+    assert clock.now == pytest.approx(2.1)
+
+
+def test_two_accounts_in_one_chat_are_independent_but_share_the_ip_budget():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    for _ in range(4):
+        gate.acquire("POST", send_to("a"), account="one")
+        gate.acquire("POST", send_to("a"), account="two")
+    assert clock.now == 0 and clock.sleeps == []
+    gate.acquire("POST", send_to("a"), account="one")
+    assert clock.sleeps == pytest.approx([2.1])
+
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    for turn in range(80):
+        gate.acquire("POST", send_to(f"c{turn}"), account="one" if turn % 2 else "two")
+    assert clock.now == 0
+    gate.acquire("POST", send_to("fresh"), account="one")
+    assert clock.now == pytest.approx(60)
+
+
+def test_429_on_send_empties_only_that_chat_and_account():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    with pytest.raises(RateLimitError):
+        gate.observe(
+            too_many(**{"X-RateLimit-Scope": "chat"}),
+            "POST",
+            send_to("a"),
+            account="one",
+        )
+    gate.acquire("POST", send_to("b"), account="one")
+    gate.acquire("POST", send_to("a"), account="two")
+    gate.acquire("POST", f"{ROOT}users/a/messages", account="one")
+    gate.acquire("PUT", f"{ROOT}chats/a/messages/x/reactions", account="one")
+    assert clock.now == 0
+    gate.acquire("POST", send_to("a"), account="one")
+    assert clock.now == 8
+
+
+def test_429_on_reaction_empties_only_that_chat():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    with pytest.raises(RateLimitError):
+        gate.observe(
+            too_many("2", **{"X-RateLimit-Scope": "chat"}),
+            "PUT",
+            f"{ROOT}chats/a/messages/x/reactions",
+            account="one",
+        )
+    gate.acquire("PUT", f"{ROOT}chats/b/messages/x/reactions", account="one")
+    assert clock.now == 0
+    clock.now += 2
+    gate.acquire("PUT", f"{ROOT}chats/a/messages/x/reactions", account="one")
+    assert clock.sleeps == []
+    gate.acquire("PUT", f"{ROOT}chats/a/messages/x/reactions", account="one")
+    assert clock.sleeps == pytest.approx([1.1])
+
+
+def test_429_on_edit_empties_the_account_bucket_in_every_chat():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    with pytest.raises(RateLimitError):
+        gate.observe(too_many(), "PATCH", edit_in("a"), account="one")
+    gate.acquire("PATCH", edit_in("a"), account="two")
+    gate.acquire("POST", send_to("a"), account="one")
+    assert clock.now == 0
+    gate.acquire("PATCH", edit_in("b", "y"), account="one")
+    assert clock.now == 8
+
+
+def test_429_on_delete_for_me_empties_the_account_bucket_in_every_chat():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    with pytest.raises(RateLimitError):
+        gate.observe(
+            too_many("5"),
+            "POST",
+            f"{ROOT}chats/a/messages/delete-for-me",
+            account="one",
+        )
+    gate.acquire("POST", f"{ROOT}chats/b/messages/delete-for-me", account="two")
+    assert clock.now == 0
+    gate.acquire("POST", f"{ROOT}chats/b/messages/delete-for-me", account="one")
+    assert clock.now == 5
+
+
+@pytest.mark.parametrize("scope", ["ip_flood", "global_flood"])
+def test_flood_scopes_still_block_every_account_and_chat(scope):
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    with pytest.raises(RateLimitError):
+        gate.observe(
+            too_many("6", **{"X-RateLimit-Scope": scope}),
+            "POST",
+            send_to("a"),
+            account="one",
+        )
+    gate.acquire("POST", send_to("z"), account="two")
+    assert clock.now == 6
+
+
+def test_forward_into_a_chat_spends_that_chats_send_bucket():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    gate.acquire("POST", send_to("c") + "/forward", cost=3)
+    gate.acquire("POST", send_to("c"))
+    assert clock.now == 0
+    gate.acquire("POST", send_to("c"))
+    assert clock.now == pytest.approx(2.1)
+    for _ in range(4):
+        gate.acquire("POST", send_to("d"))
+    assert clock.now == pytest.approx(2.1)
+
+
+def test_account_none_is_one_shared_account_and_custom_limiter_still_works():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    for _ in range(4):
+        gate.acquire("POST", send_to("a"))
+    gate.acquire("POST", send_to("a"), account="named")
+    assert clock.now == 0
+    gate.acquire("POST", send_to("a"), account=None)
+    assert clock.sleeps == pytest.approx([2.1])
+    with pytest.raises(RateLimitError):
+        gate.observe(too_many("9"), "POST", send_to("a"))
+    gate.acquire("POST", send_to("a"), account="named")
+    assert clock.now == pytest.approx(2.1)
+    gate.acquire("POST", send_to("a"))
+    assert clock.now == pytest.approx(2.1 + 9)
+
+
+def test_bots_with_different_accounts_do_not_share_chat_buckets_but_same_do():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+
+    def transport(request):
+        return httpx.Response(200, json={})
+
+    with httpx.Client(transport=httpx.MockTransport(transport)) as http:
+        one = Bot(jwt("user-1"), client=http, limiter=gate)
+        two = Bot(jwt("user-2"), client=http, limiter=gate)
+        again = Bot(jwt("user-1", jti="other-token"), client=http, limiter=gate)
+        for _ in range(4):
+            one.send_message("a", "hi")
+            two.send_message("a", "hi")
+        assert clock.now == 0
+        again.send_message("a", "hi")
+    assert clock.sleeps == pytest.approx([2.1])
+
+
+def test_account_key_is_stable_across_refresh_and_hides_token_and_subject():
+    clock = Clock()
+    gate = limiter(clock, requests_per_minute=None)
+    first = jwt("user-9", exp=time.time() + 3600, jti="first")
+    second = jwt("user-9", exp=time.time() + 7200, jti="second")
+    tokens = iter([first, second])
+
+    def transport(request):
+        if request.url.path.endswith("/auth/refresh"):
+            return httpx.Response(200, json={"accessToken": next(tokens)})
+        return httpx.Response(200, json={})
+
+    with httpx.Client(transport=httpx.MockTransport(transport)) as http:
+        bot = Bot.from_refresh_token(
+            "seed-refresh", session_path=None, client=http, limiter=gate
+        )
+        bot.get_chats()
+        key = bot._account_key(first)
+        assert bot._account_key(second) == key
+        assert bot.refresh_count == 1
+        assert not any(
+            text in key for text in ("user-9", "first", "second", "seed-refresh")
+        )
+        bot._refresh_session.refresh_after_401(first, bot._refresh_session._generation)
+        assert bot._account_key(second) == key
+        assert bot.refresh_count == 2
+
+
+def test_token_without_subject_gets_unique_stable_key_per_instance():
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda r: httpx.Response(200))
+    ) as h:
+        one = Bot("opaque-secret-token", client=h)
+        two = Bot("opaque-secret-token", client=h)
+        key = one._account_key("opaque-secret-token")
+        assert key == one._account_key("another-opaque-token")
+        assert key != two._account_key("opaque-secret-token")
+        assert "opaque-secret-token" not in key
+
+
+def test_recovered_buckets_are_forgotten_and_the_count_is_capped(monkeypatch):
+    clock = Clock()
+    gate = limiter(clock, min_interval=0, requests_per_minute=None)
+    for chat in range(50):
+        gate.acquire("POST", send_to(f"c{chat}"), account="one")
+    assert len(gate._buckets) == 50
+    clock.now += 100
+    gate.acquire("POST", send_to("fresh"), account="one")
+    assert len(gate._buckets) == 1
+
+    monkeypatch.setattr("itd_bot.rate_limits._MAX_BUCKETS", 10)
+    clock = Clock()
+    gate = limiter(clock, min_interval=0, requests_per_minute=None)
+    for chat in range(200):
+        gate.acquire("POST", send_to(f"c{chat}"), account="one")
+        assert len(gate._buckets) <= 10
+        assert ("one", ("send", "chat", f"c{chat}")) in gate._buckets
+    for chat in range(200):
+        with pytest.raises(RateLimitError):
+            gate.observe(too_many("30"), "POST", send_to(f"x{chat}"), account="one")
+        assert len(gate._buckets) <= 10
+
+
+def test_prune_is_throttled_and_keeps_buckets_still_in_debt():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0, requests_per_minute=None)
+    for _ in range(5):
+        gate.acquire("POST", send_to("busy"), account="one")
+    gate.acquire("POST", send_to("idle"), account="one")
+    assert clock.now == pytest.approx(2.1)
+    clock.now = 4.5
+    gate.acquire("GET", "/api/other")
+    assert len(gate._buckets) == 2
+    clock.now = 6
+    gate.acquire("GET", "/api/other")
+    assert list(gate._buckets) == [("one", ("send", "chat", "busy"))]
+    clock.now = 20
+    gate.acquire("GET", "/api/other")
+    assert list(gate._buckets) == []
+
+
+def test_concurrent_callers_in_different_chats_keep_their_own_burst():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0, requests_per_minute=None)
+    barrier = threading.Barrier(12)
+
+    def run(index):
+        barrier.wait(timeout=5)
+        gate.acquire("POST", send_to(f"c{index % 3}"), account="one")
+
+    with ThreadPoolExecutor(12) as pool:
+        list(pool.map(run, range(12)))
+    assert clock.now == 0 and clock.sleeps == []
+
+
+def test_chat_id_and_account_do_not_leak_into_errors_or_logs(caplog):
+    import logging
+
+    caplog.set_level(logging.DEBUG)
+    chat = "chat-SECRET-123"
+    clock = Clock()
+    gate = limiter(clock, wait=False, min_interval=0)
+    blocked = None
+    for _ in range(5):
+        try:
+            gate.acquire("POST", send_to(chat), account="acct-SECRET")
+        except RateLimitError as error:
+            blocked = error
+    assert blocked is not None and blocked.locally_blocked
+    with pytest.raises(RateLimitError) as limited:
+        gate.observe(
+            too_many(**{"X-RateLimit-Scope": "chat"}),
+            "POST",
+            send_to(chat),
+            account="acct-SECRET",
+        )
+    for error in (blocked, limited.value):
+        text = repr(error) + str(error) + repr(vars(error))
+        assert chat not in text and "acct-SECRET" not in text
+    assert chat not in caplog.text and "acct-SECRET" not in caplog.text
