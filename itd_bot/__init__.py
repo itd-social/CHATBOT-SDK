@@ -1,3 +1,4 @@
+from .actions import ChatAction, ChatActionHandle
 from .client import Bot, APIError, ProtocolError, ResetRequired
 from .dispatcher import CommandContext, Dispatcher
 from .errors import RateLimitError, SessionStorageError, UploadQuotaError
@@ -9,6 +10,8 @@ from .context import Attachment, EventContext, MessageContext, SentMessage
 
 __all__ = [
     "Bot",
+    "ChatAction",
+    "ChatActionHandle",
     "User",
     "Post",
     "Attachment",

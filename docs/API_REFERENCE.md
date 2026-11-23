@@ -32,7 +32,8 @@
 | `delete_messages(chat_id, message_ids, for_everyone=False)` | Удалить сообщения. |
 | `forward_messages(chat_id, source_chat_id, message_ids, client_message_ids=None)` | Переслать сообщения. |
 | `mark_read(chat_id, message_id)` | Отметить сообщения прочитанными до указанного. |
-| `send_action(chat_id, action="typing", progress=None)` | Отправить действие; `progress` доступен для `upload_*`, от 0 до 1. |
+| `send_action(chat_id, action=ChatAction.TYPING, progress=None)` | Отправить действие (`ChatAction` или непустую строку); `progress` доступен для `upload_*`, число от 0 до 1. |
+| `chat_action(chat_id, action=ChatAction.TYPING, *, interval=3.0, progress=None)` | Контекстный менеджер: повторяет действие в фоне, пока выполняется блок `with`; возвращает handle с `progress` и `error`. |
 | `get_presence(user_id)`, `get_presence_many(user_ids)` | Запросить присутствие. |
 | `mark_voice_heard(chat_id, message_id)`, `get_heard_messages(chat_id, message_ids)` | Работа с отметками прослушивания. |
 

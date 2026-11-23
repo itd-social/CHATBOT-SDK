@@ -16,6 +16,7 @@ from urllib.parse import quote, urljoin, urlsplit
 
 import httpx
 
+from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
 from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
 from .rate_limits import RateLimiter, default_limiter
@@ -747,16 +748,42 @@ class Bot:
         )
 
     def send_action(
-        self, chat_id: str, action: str = "typing", *, progress: float | None = None
+        self,
+        chat_id: str,
+        action: ChatAction | str = ChatAction.TYPING,
+        *,
+        progress: float | None = None,
     ) -> Any:
-        body: dict[str, Any] = {"type": action}
-        if progress is not None:
-            if not action.startswith("upload_") or not 0 <= progress <= 1:
-                raise ValueError(
-                    "progress requires upload action and must be between 0 and 1"
-                )
-            body["progress"] = progress
+        """Send a chat action status.
+
+        ``action`` is a :class:`ChatAction` or any non-empty string (the server
+        decides the result for unknown ones). ``progress`` is only allowed for
+        ``upload_*`` actions and must be a number from 0 to 1 inclusive; invalid
+        values raise ``ValueError`` before any request is made.
+        """
+        body = _action_body(action, progress)
         return self.request("POST", f"/chats/{_id(chat_id)}/action", json=body)
+
+    def chat_action(
+        self,
+        chat_id: str,
+        action: ChatAction | str = ChatAction.TYPING,
+        *,
+        interval: float = 3.0,
+        progress: ProgressSource = None,
+    ) -> ChatActionHandle:
+        """Show a chat action for the duration of a ``with`` block.
+
+        The first request is sent in ``__enter__`` and raises as usual; a daemon
+        thread then repeats it every ``interval`` seconds (at least 1.0) with the
+        current ``handle.progress`` until the block exits. ``progress`` may be a
+        number, None or a callable evaluated on every tick. The first background
+        failure stops the loop and is kept in ``handle.error``. Requests go
+        through the shared rate limiter.
+        """
+        return ChatActionHandle(
+            self, chat_id, action, interval=interval, progress=progress
+        )
 
     def clear_history(self, chat_id: str, *, for_everyone: bool = False) -> Any:
         return self.request(
