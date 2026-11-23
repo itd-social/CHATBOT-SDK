@@ -75,6 +75,7 @@ class Bot:
         )
         self._owns_client = client is None
         self._account_lock = threading.Lock()
+        self._account_cache: tuple[str, str | None, str] | None = None
         self._fallback_account: str | None = None
         self._rate_limits = (
             limiter
@@ -114,16 +115,27 @@ class Bot:
         Uses the account ID (JWT sub) the session or token carries, hashed;
         otherwise a random key unique to this instance.
         """
-        subject = self._refresh_session.subject if self._refresh_session else None
-        if not subject:
-            subject = _claims(access_token).get("sub")
-        if isinstance(subject, str) and subject:
-            digest = hashlib.sha256(b"itd-account:" + subject.encode("utf-8"))
-            return "sub:" + digest.hexdigest()[:24]
+        session_subject = (
+            self._refresh_session.subject if self._refresh_session else None
+        )
         with self._account_lock:
-            if self._fallback_account is None:
-                self._fallback_account = "bot:" + uuid.uuid4().hex
-            return self._fallback_account
+            cached = self._account_cache
+            if (
+                cached is not None
+                and cached[0] == access_token
+                and cached[1] == session_subject
+            ):
+                return cached[2]
+            subject = session_subject or _claims(access_token).get("sub")
+            if isinstance(subject, str) and subject:
+                digest = hashlib.sha256(b"itd-account:" + subject.encode("utf-8"))
+                key = "sub:" + digest.hexdigest()[:24]
+            else:
+                if self._fallback_account is None:
+                    self._fallback_account = "bot:" + uuid.uuid4().hex
+                key = self._fallback_account
+            self._account_cache = (access_token, session_subject, key)
+            return key
 
     def _access_state(self) -> tuple[str, int]:
         if self._refresh_session is not None:

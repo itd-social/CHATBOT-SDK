@@ -438,3 +438,35 @@ def test_action_route_is_limited_only_by_the_shared_request_budget():
     with pytest.raises(RateLimitError) as blocked:
         gate.acquire("POST", path, account="one")
     assert blocked.value.locally_blocked
+
+
+def test_account_key_cache_decodes_each_token_once(monkeypatch):
+    import itd_bot.client as client_module
+
+    calls = []
+    real = client_module._claims
+
+    def counting(token):
+        calls.append(token)
+        return real(token)
+
+    monkeypatch.setattr(client_module, "_claims", counting)
+    first, second = jwt("user-1"), jwt("user-2")
+    bot = Bot(first, client=httpx.Client(transport=httpx.MockTransport(lambda r: None)))
+    key = bot._account_key(first)
+    assert [bot._account_key(first) for _ in range(5)] == [key] * 5
+    assert calls == [first]
+    other = bot._account_key(second)
+    assert other != key and calls == [first, second]
+    assert bot._account_key(second) == other and len(calls) == 2
+    assert bot._account_key(first) == key and len(calls) == 3
+
+
+def test_account_key_cache_keeps_the_random_key_for_tokens_without_subject():
+    bot = Bot(
+        "opaque", client=httpx.Client(transport=httpx.MockTransport(lambda r: None))
+    )
+    key = bot._account_key("opaque")
+    assert bot._account_key("opaque") == key
+    assert bot._account_key("another-opaque") == key
+    assert key.startswith("bot:") and "opaque" not in key
