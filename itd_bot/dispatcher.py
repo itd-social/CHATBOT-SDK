@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-import re
+import json
 import logging
+import os
+import re
+import tempfile
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
-import json
-import os
-import tempfile
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from .client import Bot
 from .context import EventContext, MessageContext

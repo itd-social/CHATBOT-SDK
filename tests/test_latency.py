@@ -88,7 +88,7 @@ def test_poll_websocket_burst_respects_min_fetch_interval(monkeypatch):
     began = time.monotonic()
     with pytest.raises(Stop):
         bot.poll(0, lambda e: None, interval=30, websocket=True, min_fetch_interval=0.1)
-    gaps = [b - a for a, b in zip(starts, starts[1:])]
+    gaps = [b - a for a, b in zip(starts, starts[1:], strict=False)]
     # Windows clocks tick about every 16 ms.
     assert len(gaps) == 3 and min(gaps) >= 0.08
     assert time.monotonic() - began < 5

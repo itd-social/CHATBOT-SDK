@@ -1,6 +1,6 @@
-from concurrent.futures import ThreadPoolExecutor
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import pytest
@@ -775,7 +775,7 @@ def test_concurrent_callers_never_exceed_burst_per_interval():
     grants.sort()
     assert len(grants) == 12
     assert grants[3] == 0 and grants[4] > 0
-    for first, later in zip(grants, grants[4:]):
+    for first, later in zip(grants, grants[4:], strict=False):
         assert later - first >= 2.1 - 1e-6
     assert clock.now >= 8 * 2.1 - 1e-6
 

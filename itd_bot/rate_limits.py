@@ -5,16 +5,15 @@ import re
 import threading
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timezone
 from email.utils import parsedate_to_datetime
-from typing import Callable
 from urllib.parse import unquote
 
 import httpx
 
 from .errors import RateLimitError, UploadQuotaError
-
 
 _ROUTE_TEMPLATES = (
     ("POST", "/api/v1/messenger/chats/{chat}/messages/delete-for-all"),

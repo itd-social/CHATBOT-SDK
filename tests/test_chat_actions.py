@@ -8,7 +8,7 @@ import time
 import httpx
 import pytest
 
-from itd_bot import APIError, Bot, ChatAction, RateLimitError, RateLimiter
+from itd_bot import APIError, Bot, ChatAction, RateLimiter, RateLimitError
 from itd_bot.rate_limits import RateLimitConfig
 
 UPLOADS = [a for a in ChatAction if a.value.startswith("upload_")]
