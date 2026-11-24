@@ -138,6 +138,12 @@ class RefreshSession:
             self._generation += 1
 
     @property
+    def subject(self) -> str | None:
+        """Account ID (JWT ``sub``) once known; stays the same across refreshes."""
+        with self._lock:
+            return self._subject
+
+    @property
     def refresh_count(self) -> int:
         with self._lock:
             return self._refresh_count
@@ -187,7 +193,7 @@ class RefreshSession:
         }
         if self._access_token:
             headers["Authorization"] = "Bearer " + self._access_token
-        self._rate_limits.check("POST", "/api/v1/auth/refresh")
+        self._rate_limits.acquire("POST", "/api/v1/auth/refresh")
         response = self._client.post(
             self._base_url + "/api/v1/auth/refresh",
             headers=headers,

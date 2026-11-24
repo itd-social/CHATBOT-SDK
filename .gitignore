@@ -22,3 +22,5 @@ htmlcov/
 
 .bot-state.json
 .bot-state.json.*.tmp
+
+research/

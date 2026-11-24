@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import mimetypes
 import os
+import hashlib
 import json as jsonlib
 import re
 import threading
@@ -15,9 +16,10 @@ from urllib.parse import quote, urljoin, urlsplit
 
 import httpx
 
-from .auth import RefreshSession
+from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
+from .auth import RefreshSession, _claims
 from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
-from .rate_limits import RateLimitState
+from .rate_limits import RateLimiter, default_limiter
 from .post import Post
 from .user import User
 
@@ -46,6 +48,7 @@ class Bot:
         client: httpx.Client | None = None,
         refresh_token: str | None = None,
         session_path: str | os.PathLike | None = ".itd-session.json",
+        limiter: RateLimiter | None = None,
     ):
         if token is None and refresh_token is None:
             raise ValueError("A bearer token or refresh token is required")
@@ -71,7 +74,14 @@ class Bot:
             ),
         )
         self._owns_client = client is None
-        self._rate_limits = RateLimitState()
+        self._account_lock = threading.Lock()
+        self._account_cache: tuple[str, str | None, str] | None = None
+        self._fallback_account: str | None = None
+        self._rate_limits = (
+            limiter
+            if limiter is not None
+            else default_limiter(f"{parts.scheme.lower()}://{parts.netloc.lower()}")
+        )
         try:
             self._refresh_session = (
                 RefreshSession(
@@ -98,6 +108,34 @@ class Bot:
         if self._refresh_session is not None:
             return self._refresh_session.get_access_token()
         return self._token
+
+    def _account_key(self, access_token: str) -> str:
+        """Stable opaque account key for rate-limit buckets; never the token itself.
+
+        Uses the account ID (JWT sub) the session or token carries, hashed;
+        otherwise a random key unique to this instance.
+        """
+        session_subject = (
+            self._refresh_session.subject if self._refresh_session else None
+        )
+        with self._account_lock:
+            cached = self._account_cache
+            if (
+                cached is not None
+                and cached[0] == access_token
+                and cached[1] == session_subject
+            ):
+                return cached[2]
+            subject = session_subject or _claims(access_token).get("sub")
+            if isinstance(subject, str) and subject:
+                digest = hashlib.sha256(b"itd-account:" + subject.encode("utf-8"))
+                key = "sub:" + digest.hexdigest()[:24]
+            else:
+                if self._fallback_account is None:
+                    self._fallback_account = "bot:" + uuid.uuid4().hex
+                key = self._fallback_account
+            self._account_cache = (access_token, session_subject, key)
+            return key
 
     def _access_state(self) -> tuple[str, int]:
         if self._refresh_session is not None:
@@ -178,8 +216,18 @@ class Bot:
             for key in request_headers
         ):
             raise ValueError("authentication and host headers are managed by the SDK")
-        self._rate_limits.check(method, path)
+        cost = 1
+        if (
+            method.upper() == "POST"
+            and path.endswith("/messages/forward")
+            and isinstance(json, Mapping)
+        ):
+            message_ids = json.get("message_ids")
+            if isinstance(message_ids, list):
+                cost = max(1, len(message_ids))
         access_token, generation = self._access_state()
+        account = self._account_key(access_token)
+        self._rate_limits.acquire(method, path, cost=cost, account=account)
         request_headers.update(
             {
                 "Authorization": "Bearer " + access_token,
@@ -196,7 +244,7 @@ class Bot:
             follow_redirects=False,
             headers=request_headers,
         )
-        self._rate_limits.observe(response, method, path)
+        self._rate_limits.observe(response, method, path, account=account)
         if (
             response.status_code == 401
             and self._refresh_session is not None
@@ -207,7 +255,7 @@ class Bot:
                 "Bearer "
                 + self._refresh_session.refresh_after_401(access_token, generation)
             )
-            self._rate_limits.check(method, path)
+            self._rate_limits.acquire(method, path, cost=cost, account=account)
             response = self._client.request(
                 method,
                 self.base_url + path,
@@ -217,7 +265,7 @@ class Bot:
                 follow_redirects=False,
                 headers=request_headers,
             )
-            self._rate_limits.observe(response, method, path)
+            self._rate_limits.observe(response, method, path, account=account)
         if response.is_success and raw:
             return response
         try:
@@ -534,7 +582,11 @@ class Bot:
         with httpx.Client(
             follow_redirects=False, timeout=30.0, trust_env=False
         ) as client:
+            self._rate_limits.acquire("GET", parsed.path)
             with client.stream("GET", url) as response:
+                if response.status_code == 429:
+                    response.read()
+                    self._rate_limits.observe(response, "GET", parsed.path)
                 response.raise_for_status()
                 with target.open("xb") as output:
                     try:
@@ -708,16 +760,42 @@ class Bot:
         )
 
     def send_action(
-        self, chat_id: str, action: str = "typing", *, progress: float | None = None
+        self,
+        chat_id: str,
+        action: ChatAction | str = ChatAction.TYPING,
+        *,
+        progress: float | None = None,
     ) -> Any:
-        body: dict[str, Any] = {"type": action}
-        if progress is not None:
-            if not action.startswith("upload_") or not 0 <= progress <= 1:
-                raise ValueError(
-                    "progress requires upload action and must be between 0 and 1"
-                )
-            body["progress"] = progress
+        """Send a chat action status.
+
+        ``action`` is a :class:`ChatAction` or any non-empty string (the server
+        decides the result for unknown ones). ``progress`` is only allowed for
+        ``upload_*`` actions and must be a number from 0 to 1 inclusive; invalid
+        values raise ``ValueError`` before any request is made.
+        """
+        body = _action_body(action, progress)
         return self.request("POST", f"/chats/{_id(chat_id)}/action", json=body)
+
+    def chat_action(
+        self,
+        chat_id: str,
+        action: ChatAction | str = ChatAction.TYPING,
+        *,
+        interval: float = 3.0,
+        progress: ProgressSource = None,
+    ) -> ChatActionHandle:
+        """Show a chat action for the duration of a ``with`` block.
+
+        The first request is sent in ``__enter__`` and raises as usual; a daemon
+        thread then repeats it every ``interval`` seconds (at least 1.0) with the
+        current ``handle.progress`` until the block exits. ``progress`` may be a
+        number, None or a callable evaluated on every tick. The first background
+        failure stops the loop and is kept in ``handle.error``. Requests go
+        through the shared rate limiter.
+        """
+        return ChatActionHandle(
+            self, chat_id, action, interval=interval, progress=progress
+        )
 
     def clear_history(self, chat_id: str, *, for_everyone: bool = False) -> Any:
         return self.request(
@@ -910,7 +988,7 @@ class Bot:
             "X-Requested-With": "XMLHttpRequest",
         }
         for attempt in range(2):
-            self._rate_limits.check("GET", resolved.path)
+            self._rate_limits.acquire("GET", resolved.path)
             with self._client.stream(
                 "GET", resolved.geturl(), headers=headers, follow_redirects=False
             ) as response:
@@ -1008,13 +1086,28 @@ class Bot:
         parts = urlsplit(self.base_url)
         scheme = "wss" if parts.scheme == "https" else "ws"
         url = f"{scheme}://{parts.netloc}{parts.path}/api/v1/messenger/ws?capabilities=chat_settings_v2"
-        conn = websocket.create_connection(
-            url,
-            timeout=5,
-            redirect_limit=0,
-            subprotocols=["itd.messenger.v1", "bearer." + self._access_token()],
-            origin=f"{parts.scheme}://{parts.netloc}",
-        )
+        access_token = self._access_token()
+        self._rate_limits.acquire("GET", "/api/v1/messenger/ws")
+        try:
+            conn = websocket.create_connection(
+                url,
+                timeout=5,
+                redirect_limit=0,
+                subprotocols=["itd.messenger.v1", "bearer." + access_token],
+                origin=f"{parts.scheme}://{parts.netloc}",
+            )
+        except websocket.WebSocketBadStatusException as exc:
+            if exc.status_code == 429:
+                self._rate_limits.observe(
+                    httpx.Response(
+                        429,
+                        headers=exc.resp_headers or {},
+                        content=exc.resp_body or b"",
+                    ),
+                    "GET",
+                    "/api/v1/messenger/ws",
+                )
+            raise
         try:
             if conn.handshake_response.status != 101:
                 raise ProtocolError("WebSocket handshake failed")

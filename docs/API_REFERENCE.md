@@ -4,7 +4,7 @@
 
 ## Клиент и ошибки
 
-`Bot(token, *, base_url="https://xn--d1ah4a.com", timeout=30.0, client=None)` принимает токен без префикса `Bearer`. Используйте `with Bot(...) as bot:` или вызовите `close()`. Переданный `httpx.Client` остаётся во владении вызывающего кода. `set_token(token)` заменяет access-токен. `Bot.from_refresh_token(refresh_token, session_path=".itd-session.json")` включает автоматическое обновление и сохранение ротаций; `session_path=None` хранит их только в памяти. `refresh_count` — число успешных обновлений в этом экземпляре. Подробнее: [авторизация](AUTH.md).
+`Bot(token, *, base_url="https://xn--d1ah4a.com", timeout=30.0, client=None, limiter=None)` принимает токен без префикса `Bearer`. Используйте `with Bot(...) as bot:` или вызовите `close()`. Переданный `httpx.Client` остаётся во владении вызывающего кода. `set_token(token)` заменяет access-токен. `Bot.from_refresh_token(refresh_token, session_path=".itd-session.json")` включает автоматическое обновление и сохранение ротаций; `session_path=None` хранит их только в памяти. `refresh_count` — число успешных обновлений в этом экземпляре. Подробнее: [авторизация](AUTH.md).
 
 `APIError` содержит `status`, `code`, `errors`, `retry_after`. Ошибки транспорта и таймауты исходят от `httpx`; `ProtocolError` означает неподходящий ответ. `ResetRequired` наследует `ProtocolError` и содержит `response`. В режиме refresh SDK может повторить запрос после HTTP 401 один раз; подробности и ограничения описаны в [авторизации](AUTH.md).
 
@@ -32,7 +32,8 @@
 | `delete_messages(chat_id, message_ids, for_everyone=False)` | Удалить сообщения. |
 | `forward_messages(chat_id, source_chat_id, message_ids, client_message_ids=None)` | Переслать сообщения. |
 | `mark_read(chat_id, message_id)` | Отметить сообщения прочитанными до указанного. |
-| `send_action(chat_id, action="typing", progress=None)` | Отправить действие; `progress` доступен для `upload_*`, от 0 до 1. |
+| `send_action(chat_id, action=ChatAction.TYPING, progress=None)` | Отправить действие (`ChatAction` или непустую строку); `progress` доступен для `upload_*`, число от 0 до 1. |
+| `chat_action(chat_id, action=ChatAction.TYPING, *, interval=3.0, progress=None)` | Контекстный менеджер: повторяет действие в фоне, пока выполняется блок `with`; возвращает handle с `progress` и `error`. |
 | `get_presence(user_id)`, `get_presence_many(user_ids)` | Запросить присутствие. |
 | `mark_voice_heard(chat_id, message_id)`, `get_heard_messages(chat_id, message_ids)` | Работа с отметками прослушивания. |
 
@@ -70,3 +71,7 @@
 ## Низкоуровневые запросы
 
 `request(method, path, params=None, json=None)` отправляет запрос к `/api/v1/messenger`. `api_request(method, path, params=None, json=None, content=None, files=None, headers=None, raw=False)` обращается к путям `/api/` и `/v1/` настроенного сервера. Только один из `json`, `content`, `files` можно указать одновременно. `raw=True` возвращает успешный `httpx.Response`; перенаправления отключены. Вызывающий код отвечает за корректность экспериментальных запросов.
+
+## Ограничитель запросов
+
+`Bot(..., limiter=None)` использует общий для origin ограничитель в текущем процессе. `RateLimiter(RateLimitConfig(...))` позволяет настроить ожидание, общий бюджет и интервалы групп. Один объект можно передать нескольким ботам. Состав настроек, область действия, отключение ожидания и ошибки описаны в [RATE_LIMITS.md](RATE_LIMITS.md). `UploadQuotaError(APIError)` выделяет исчерпание бюджета загрузок из обычных временных `RateLimitError`.

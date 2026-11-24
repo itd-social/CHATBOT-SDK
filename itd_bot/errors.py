@@ -60,3 +60,7 @@ class ResetRequired(ProtocolError):
 
 class SessionStorageError(Exception):
     """The persistent refresh session could not be read or safely saved."""
+
+
+class UploadQuotaError(APIError):
+    """Upload budget is exhausted; a timed retry may not free it."""
