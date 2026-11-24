@@ -29,7 +29,7 @@ Issues = "https://github.com/itd-social/CHATBOT-SDK/issues"
 test = ["pytest>=7"]
 websocket = ["websocket-client>=1.8,<2"]
 images = ["Pillow>=10,<13"]
-dev = ["pytest>=7", "ruff>=0.17.5,<0.18", "pre-commit>=3.7,<5", "build>=1,<2", "websocket-client>=1.8,<2", "Pillow>=10,<13"]
+dev = ["pytest>=7", "ruff==0.17.5", "pre-commit>=3.7,<5", "build>=1,<2", "websocket-client>=1.8,<2", "Pillow>=10,<13"]
 release = ["python-semantic-release==10.7.0", "build>=1,<2"]
 
 [tool.setuptools.packages.find]
