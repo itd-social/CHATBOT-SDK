@@ -75,12 +75,12 @@ BucketScope = tuple[str, ...]
 def _bucket_scope(group: str, method: str, path: str) -> BucketScope:
     """Return the account-relative token-bucket scope for a limited group.
 
-    Sending, forwarding and reactions are counted per chat; sending to a user is
-    a separate scope per user ID; editing and deleting for oneself are shared by
-    the whole account until their per-chat independence is measured.
+    Sending, forwarding, reactions, editing and deleting for oneself are counted
+    per chat (the chat ID comes from the request path); sending to a user is a
+    separate scope per user ID.
     """
     path = path.split("?", 1)[0]
-    if group in {"send", "reaction"}:
+    if group in {"send", "reaction", "edit", "delete_for_me"}:
         chat = _CHAT_PATH.match(path)
         if chat:
             return group, "chat", unquote(chat.group(1))
@@ -308,8 +308,8 @@ class RateLimiter(RateLimitState):
     of one token and ``*_burst`` the bucket size, so ``burst=1`` keeps a fixed
     interval. Buckets are kept per ``account`` passed to ``acquire`` and
     ``observe`` (``None`` is one shared account): sending, forwarding and
-    reactions per chat, sending to a user per user ID, editing and deleting for
-    oneself per account. The request budget and IP cooldowns stay shared by the
+    reactions, editing and deleting for oneself per chat, sending to a user per
+    user ID. The request budget and IP cooldowns stay shared by the
     whole instance. Waiting never reserves capacity ahead of other callers. An
     already dispatched request cannot be recalled after a concurrent 429.
     """

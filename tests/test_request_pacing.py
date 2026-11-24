@@ -85,8 +85,13 @@ def test_rolling_window_counts_errors_and_all_routes():
             "POST",
             2.1,
         ),
-        (["chats/a/messages/x", "chats/b/messages/y"], "PATCH", 6.2),
+        (["chats/a/messages/x", "chats/a/messages/y"], "PATCH", 6.2),
         (["chats/a/messages/x/reactions", "chats/a/messages/y/reactions"], "PUT", 1.1),
+        (
+            ["chats/a/messages/delete-for-me", "chats/a/messages/delete-for-me"],
+            "POST",
+            3.2,
+        ),
     ],
 )
 def test_groups_share_capacity_within_their_scope(paths, method, interval):
@@ -446,7 +451,7 @@ def test_delete_for_me_has_own_rule_and_batch_counts_as_one_request():
     with httpx.Client(transport=httpx.MockTransport(transport)) as http:
         bot = Bot("fake", client=http, limiter=gate)
         bot.delete_messages("a", ["one", "two", "three"])
-        bot.delete_messages("b", ["four"])
+        bot.delete_messages("a", ["four"])
         bot.delete_messages("a", ["five"], for_everyone=True)
     assert seen == pytest.approx([0, 3.2, 3.2])
 
@@ -531,7 +536,7 @@ BUCKETS = [
 ]
 
 
-def test_bucket_scope_separates_chats_users_and_account_wide_groups():
+def test_bucket_scope_separates_chats_and_users():
     from itd_bot.rate_limits import _bucket_scope
 
     root = "/api/v1/messenger/"
@@ -552,10 +557,22 @@ def test_bucket_scope_separates_chats_users_and_account_wide_groups():
         "chat",
         "a",
     )
-    assert _bucket_scope("edit", "PATCH", root + "chats/a/messages/x") == ("edit",)
+    assert _bucket_scope("edit", "PATCH", root + "chats/a/messages/x") == (
+        "edit",
+        "chat",
+        "a",
+    )
+    assert _bucket_scope("edit", "PATCH", root + "chats/b/messages/x?y=1") == (
+        "edit",
+        "chat",
+        "b",
+    )
     assert _bucket_scope(
         "delete_for_me", "POST", root + "chats/a/messages/delete-for-me"
-    ) == ("delete_for_me",)
+    ) == ("delete_for_me", "chat", "a")
+    assert _bucket_scope(
+        "delete_for_me", "POST", root + "chats/b/messages/delete-for-me"
+    ) == ("delete_for_me", "chat", "b")
     assert _bucket_scope("send", "POST", SEND + "?x=1") == ("send", "chat", "a")
 
 
@@ -861,31 +878,76 @@ def test_429_on_reaction_empties_only_that_chat():
     assert clock.sleeps == pytest.approx([1.1])
 
 
-def test_429_on_edit_empties_the_account_bucket_in_every_chat():
+def delete_in(chat):
+    return f"{ROOT}chats/{chat}/messages/delete-for-me"
+
+
+def test_exhausted_edit_bucket_in_one_chat_does_not_delay_another_chat():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    for _ in range(4):
+        gate.acquire("PATCH", edit_in("a"))
+    for _ in range(4):
+        gate.acquire("PATCH", edit_in("b"))
+    assert clock.now == 0 and clock.sleeps == []
+    gate.acquire("PATCH", edit_in("a"))
+    assert clock.sleeps == pytest.approx([6.2])
+
+
+def test_exhausted_delete_for_me_bucket_in_one_chat_does_not_delay_another_chat():
+    clock = Clock()
+    gate = limiter(clock, min_interval=0)
+    for _ in range(8):
+        gate.acquire("POST", delete_in("a"))
+    for _ in range(8):
+        gate.acquire("POST", delete_in("b"))
+    assert clock.now == 0 and clock.sleeps == []
+    gate.acquire("POST", delete_in("a"))
+    assert clock.sleeps == pytest.approx([3.2])
+
+
+@pytest.mark.parametrize(
+    "method,path_for,burst,interval",
+    [
+        ("PATCH", edit_in, 4, 6.2),
+        ("POST", delete_in, 8, 3.2),
+    ],
+)
+def test_two_accounts_have_independent_edit_and_delete_for_me_buckets(
+    method, path_for, burst, interval
+):
+    clock = Clock()
+    gate = limiter(clock, min_interval=0, requests_per_minute=None)
+    for _ in range(burst):
+        gate.acquire(method, path_for("a"), account="one")
+        gate.acquire(method, path_for("a"), account="two")
+    assert clock.now == 0 and clock.sleeps == []
+    gate.acquire(method, path_for("a"), account="one")
+    assert clock.sleeps == pytest.approx([interval])
+
+
+def test_429_on_edit_empties_only_that_chat_and_account():
     clock = Clock()
     gate = limiter(clock, min_interval=0)
     with pytest.raises(RateLimitError):
         gate.observe(too_many(), "PATCH", edit_in("a"), account="one")
+    gate.acquire("PATCH", edit_in("b", "y"), account="one")
     gate.acquire("PATCH", edit_in("a"), account="two")
     gate.acquire("POST", send_to("a"), account="one")
     assert clock.now == 0
-    gate.acquire("PATCH", edit_in("b", "y"), account="one")
+    gate.acquire("PATCH", edit_in("a", "z"), account="one")
     assert clock.now == 8
 
 
-def test_429_on_delete_for_me_empties_the_account_bucket_in_every_chat():
+def test_429_on_delete_for_me_empties_only_that_chat_and_account():
     clock = Clock()
     gate = limiter(clock, min_interval=0)
     with pytest.raises(RateLimitError):
-        gate.observe(
-            too_many("5"),
-            "POST",
-            f"{ROOT}chats/a/messages/delete-for-me",
-            account="one",
-        )
-    gate.acquire("POST", f"{ROOT}chats/b/messages/delete-for-me", account="two")
+        gate.observe(too_many("5"), "POST", delete_in("a"), account="one")
+    gate.acquire("POST", delete_in("b"), account="one")
+    gate.acquire("POST", delete_in("a"), account="two")
     assert clock.now == 0
-    gate.acquire("POST", f"{ROOT}chats/b/messages/delete-for-me", account="one")
+    gate.acquire("POST", delete_in("a"), account="one")
     assert clock.now == 5
 
 
