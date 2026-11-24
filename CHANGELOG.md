@@ -4,6 +4,109 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-11-24)
+
+### Bug Fixes
+
+- **rate-limits**: Снизил reaction_burst по умолчанию до 12
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+- **rate-limits**: Убрана блокировка переписки при квоте новых собеседников
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+### Build System
+
+- **lint**: Закрепить ruff точной версией ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+- **lint**: Расширить правила ruff (E4, E7, E9, F, I, UP, B)
+  ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+### Chores
+
+- Добавить конфигурацию pre-commit с ruff и раздел в CONTRIBUTING
+  ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+- Линтер, pre-commit и примеры ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+- **changelog**: Добавлен раздел Unreleased ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+### Code Style
+
+- Применить автоисправления ruff (I, UP, B) ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+### Continuous Integration
+
+- Вынести ruff check и format --check в отдельный job lint
+  ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+### Documentation
+
+- Dynamic package badges ([#6](https://github.com/itd-social/CHATBOT-SDK/pull/6),
+  [`504c880`](https://github.com/itd-social/CHATBOT-SDK/commit/504c880b5c69b8f94d27459e39df1a36080dcc09))
+
+- **changelog**: Убрать раздел Unreleased перед релизом
+  ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+- **examples**: Добавить восемь примеров по темам и ссылки на них в README и USAGE
+  ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+- **rate-limits**: Область корзин правок и удаления для себя — (аккаунт, чат)
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+- **rate-limits**: Описал область корзин и идентификатор аккаунта
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+### Features
+
+- Proactive rate limits ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+- **actions**: Добавил ChatAction и контекстный менеджер chat_action
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+- **rate-limits**: Token bucket для групп сообщений
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+- **rate-limits**: Вести корзины правок и удаления для себя по (аккаунт, чат)
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+- **rate-limits**: Добавлена защита запросов и проверенные правила сообщений
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+- **rate-limits**: Разделил корзины отправки по аккаунту и чату
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+### Performance Improvements
+
+- **client**: Добавлено кэширование ключа аккаунта для последней строки токена
+  ([#8](https://github.com/itd-social/CHATBOT-SDK/pull/8),
+  [`9445642`](https://github.com/itd-social/CHATBOT-SDK/commit/944564278e592b66d4b82f70f5ebd521618991af))
+
+### Testing
+
+- **examples**: Проверить компиляцию, импорт без сети и токена и офлайн-демо лимитов
+  ([#9](https://github.com/itd-social/CHATBOT-SDK/pull/9),
+  [`41a6767`](https://github.com/itd-social/CHATBOT-SDK/commit/41a67670324eb076ef73c5b2d8ffd072da01db58))
+
+
 ## v1.1.0 (2026-11-21)
 
 ### Features
