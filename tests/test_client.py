@@ -1,7 +1,9 @@
 import json
+
 import httpx
 import pytest
-from itd_bot import Bot, APIError, ProtocolError, ResetRequired
+
+from itd_bot import APIError, Bot, ProtocolError, ResetRequired
 
 
 def make_bot(handler):

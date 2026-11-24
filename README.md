@@ -65,6 +65,21 @@ with Bot.from_refresh_token(os.environ["ITD_REFRESH_TOKEN"]) as bot:
 
 `Bot.from_refresh_token` по умолчанию сохраняет актуальный токен в `.itd-session.json`. Файл содержит секрет в открытом виде — защитите его и не добавляйте в Git. Сессия может истечь или быть отозвана; [подробнее об авторизации](docs/AUTH.md).
 
+## Примеры
+
+Каждый пример лежит в своей папке с коротким README. Токены задаются переменными окружения, значений по умолчанию нет.
+
+- [rate_limit_demo](examples/rate_limit_demo/README.md): офлайн-показ корзин токенов и пауз после 429.
+- [formatting_bot](examples/formatting_bot/README.md): форматирование через `Text`.
+- [countdown_bot](examples/countdown_bot/README.md): отправка, правка и удаление своего сообщения.
+- [reactions_bot](examples/reactions_bot/README.md): постановка реакций и событие `reaction`.
+- [media_saver](examples/media_saver/README.md): сохранение вложений входящих сообщений.
+- [forward_bot](examples/forward_bot/README.md): пересылка сообщений в служебный чат.
+- [subscribers_only](examples/subscribers_only/README.md): команда только для подписчиков.
+- [profile_lookup](examples/profile_lookup/README.md): чтение профиля пользователя.
+
+Плоские примеры `examples/echo.py`, `commands.py` и `chat_actions.py` остались на месте.
+
 ## Документация
 
 | Раздел | Что внутри |
@@ -74,7 +89,7 @@ with Bot.from_refresh_token(os.environ["ITD_REFRESH_TOKEN"]) as bot:
 | [Авторизация](docs/AUTH.md) | Получение refresh-cookie, ротация и восстановление сессии |
 | [Руководство](docs/USAGE.md) | Сообщения, события, файлы, реакции и форматирование |
 | [Справочник API](docs/API_REFERENCE.md) | Методы клиента, обработчики и ошибки |
-| [Примеры](examples/) | Эхо-бот, команды и тестовые боты |
+| [Примеры](examples/) | Эхо-бот, команды, тестовые боты и небольшие боты по темам |
 | [История изменений](CHANGELOG.md) | Изменения по выпущенным версиям |
 | [Публикация в PyPI](docs/PUBLISHING.md) | Как выпустить пакет для установки через pip |
 

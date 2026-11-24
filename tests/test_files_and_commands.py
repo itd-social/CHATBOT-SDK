@@ -3,7 +3,7 @@ import json
 import httpx
 import pytest
 
-from itd_bot import Bot, Dispatcher, APIError
+from itd_bot import APIError, Bot, Dispatcher
 
 
 def test_chunked_file_and_send():

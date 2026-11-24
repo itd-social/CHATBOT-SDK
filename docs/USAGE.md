@@ -282,6 +282,21 @@ python -m pytest
 
 Автоматические тесты используют локальный транспорт. Отдельно на тестовом аккаунте проверены получение и отправка текстовых сообщений, загрузка одного текстового файла и WebSocket ping/pong. Отправка вложения, разные форматы и остальные методы требуют дополнительной проверки на сервере.
 
+## Примеры
+
+Небольшие боты по темам, каждый в своей папке с README и переменными окружения (значений по умолчанию нет):
+
+- [rate_limit_demo](../examples/rate_limit_demo/README.md): офлайн-показ корзин токенов и пауз после 429.
+- [formatting_bot](../examples/formatting_bot/README.md): форматирование через `Text`.
+- [countdown_bot](../examples/countdown_bot/README.md): отправка, правка и удаление своего сообщения.
+- [reactions_bot](../examples/reactions_bot/README.md): постановка реакций и событие `reaction`.
+- [media_saver](../examples/media_saver/README.md): сохранение вложений входящих сообщений.
+- [forward_bot](../examples/forward_bot/README.md): пересылка сообщений в служебный чат.
+- [subscribers_only](../examples/subscribers_only/README.md): команда только для подписчиков.
+- [profile_lookup](../examples/profile_lookup/README.md): чтение профиля пользователя.
+
+Плоские примеры `examples/echo.py`, `commands.py` и `chat_actions.py` остались на месте. Примеры проверяются в `tests/test_examples.py` без сети и токена; живой сервер ими не проверялся.
+
 ## Отдельный тестовый бот
 
 [examples/test_bot.py](../examples/test_bot.py) — интерактивный бот для тестового аккаунта. Он читает все входящие сообщения, но выполняет команды только пользователя с `ITD_TESTER_ID`. `/help` показывает команды, в том числе `/file`, `/download FILE_ID` и `/api METHOD /api/путь [JSON]`. `/api` может выполнять операции изменения данных от имени аккаунта бота; назначайте доступ только доверенному тестировщику и используйте тестовый аккаунт.

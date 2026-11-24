@@ -3,7 +3,6 @@ import pytest
 
 from itd_bot import APIError, Bot, Dispatcher, ProtocolError, User
 
-
 PROFILE = {
     "id": "user-123",
     "username": "example",

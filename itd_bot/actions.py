@@ -5,8 +5,9 @@ from __future__ import annotations
 import math
 import numbers
 import threading
+from collections.abc import Callable
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .client import Bot
@@ -29,8 +30,8 @@ class ChatAction(str, Enum):
     UPLOAD_DOCUMENT = "upload_document"
 
 
-ProgressValue = Union[float, int, None]
-ProgressSource = Union[ProgressValue, Callable[[], ProgressValue]]
+ProgressValue = float | int | None
+ProgressSource = ProgressValue | Callable[[], ProgressValue]
 
 
 def _action_name(action: Any) -> str:

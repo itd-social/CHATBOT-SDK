@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import hashlib
+import json as jsonlib
 import logging
 import mimetypes
 import os
-import hashlib
-import json as jsonlib
 import re
 import threading
 import time
 import uuid
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
 from urllib.parse import quote, urljoin, urlsplit
 
 import httpx
@@ -19,8 +20,8 @@ import httpx
 from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
 from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
-from .rate_limits import RateLimiter, default_limiter
 from .post import Post
+from .rate_limits import RateLimiter, default_limiter
 from .user import User
 
 _log = logging.getLogger(__name__)
@@ -447,10 +448,9 @@ class Bot:
         """Send a video; optional compression requires the ffmpeg executable."""
         if not compress:
             return self.send_file(chat_id, source, text=caption, **kwargs)
+        import shutil
         import subprocess
         import tempfile
-
-        import shutil
 
         executable = shutil.which("ffmpeg")
         if executable is None:
