@@ -83,7 +83,7 @@ with Bot.from_refresh_token(os.environ["ITD_REFRESH_TOKEN"]) as bot:
 
 На Windows: `.\.venv\Scripts\python.exe bot.py`.
 
-Напишите аккаунту бота `/start`, потом `/echo привет`. Остановить бота можно через `Ctrl+C`.
+Напишите аккаунту бота `/start`, потом `/echo привет`. Остановить бота можно через `Ctrl+C`: он доработает текущие события и завершится ([подробнее](USAGE.md#остановка-бота)).
 
 Хотите готовый вариант? В [`examples/refresh_test_bot.py`](../examples/refresh_test_bot.py) есть тестовый бот, который показывает, сколько раз обновился токен.
 

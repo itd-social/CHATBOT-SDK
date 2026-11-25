@@ -5,7 +5,7 @@ import time
 import httpx
 import pytest
 
-from itd_bot import Bot, Dispatcher
+from itd_bot import Bot, Dispatcher, ErrorAction
 
 
 class Stop(Exception):
@@ -192,14 +192,22 @@ def test_poll_workers_failure_is_not_checkpointed(monkeypatch):
     events = [{"type": "e", "chat_id": "a"}, {"type": "e", "chat_id": "b"}]
     monkeypatch.setattr(bot, "get_updates", lambda cursor: batch(events, 2))
     checkpoints, handled = [], []
+    both_started = threading.Barrier(2, timeout=5)
 
     def handler(event):
+        both_started.wait()
         handled.append(event["chat_id"])
         if event["chat_id"] == "a":
             raise RuntimeError("failed")
 
     with pytest.raises(RuntimeError):
-        bot.poll(0, handler, workers=2, on_checkpoint=checkpoints.append)
+        bot.poll(
+            0,
+            handler,
+            workers=2,
+            on_error=lambda exc, event: ErrorAction.STOP,
+            on_checkpoint=checkpoints.append,
+        )
     assert sorted(handled) == ["a", "b"] and checkpoints == []
     bot.close()
 

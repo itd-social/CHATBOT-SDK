@@ -4,7 +4,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from itd_bot import Bot, Dispatcher, ProtocolError
+from itd_bot import Bot, Dispatcher, ErrorAction, ProtocolError
 
 
 class Stop(Exception):
@@ -212,6 +212,10 @@ def test_failed_handler_does_not_checkpoint(monkeypatch, tmp_path):
     @router.message()
     def broken(ctx):
         raise Stop
+
+    @router.on_error
+    def stop_on_error(exc, event):
+        return ErrorAction.STOP
 
     path = tmp_path / "state.json"
     with pytest.raises(Stop):
