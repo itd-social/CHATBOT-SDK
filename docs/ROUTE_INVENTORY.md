@@ -1,239 +1,62 @@
-# Указатель строк маршрутов в бандле
+# Маршруты ИТД
 
-Автоматически извлечённые строковые литералы из JavaScript. Это указатель для исследования, не спецификация: часть строк — пути интерфейса, шаблоны или значения, а динамически построенные маршруты могут отсутствовать. Метод HTTP и база определяются по месту использования; права и контракт сервера здесь не подтверждены. Регулярное выражение намеренно отбрасывает неоднозначные совпадения.
+Шпаргалка для тех, кто исследует платформу или пользуется `request()` и `api_request()`. Список автоматически собран из строк JavaScript-бандла ИТД.
 
-| Файл сборки | Строка |
+> **Это подсказка, а не спецификация.** Часть строк — пути интерфейса или шаблоны, динамические маршруты могут отсутствовать, а метод HTTP, права и формат ответа мы не проверяли. Прежде чем на что-то опираться, проверьте маршрут на тестовом аккаунте.
+
+Почти всё найдено в основном файле сборки. Базовые пути: `/api/v1/messenger` для мессенджера, `/api/v1/auth` для входа, `/api/...` и `/v1/...` для остального. `{id}`, `{chat}` и `{message}` ниже заменяют подстановки из JS.
+
+## Мессенджер
+
+Для них есть готовые методы SDK, смотрите [справочник](API_REFERENCE.md).
+
+| Область | Маршруты |
 |---|---|
-| `index-B4ySybtH.js` | `/10` |
-| `index-B4ySybtH.js` | `/api` |
-| `index-B4ySybtH.js` | `/api/v1/auth` |
-| `index-B4ySybtH.js` | `/api/v1/auth/phone/config` |
-| `index-B4ySybtH.js` | `/api/v1/auth/phone/resume` |
-| `index-B4ySybtH.js` | `/api/v1/auth/phone/reverse/` |
-| `index-B4ySybtH.js` | `/api/v1/event-assets/` |
-| `index-B4ySybtH.js` | `/api/v1/messenger` |
-| `index-B4ySybtH.js` | `/api/v1/messenger/browser-file-session` |
-| `index-B4ySybtH.js` | `/auth/` |
-| `index-B4ySybtH.js` | `/captcha/page` |
-| `index-B4ySybtH.js` | `/change-password` |
-| `index-B4ySybtH.js` | `/chats` |
-| `index-B4ySybtH.js` | `/chats/` |
-| `index-B4ySybtH.js` | `/chats/${S.chatId}` |
-| `index-B4ySybtH.js` | `/chats/${e}/accept` |
-| `index-B4ySybtH.js` | `/chats/${e}/action` |
-| `index-B4ySybtH.js` | `/chats/${e}/clear-history` |
-| `index-B4ySybtH.js` | `/chats/${e}/clear-history-all` |
-| `index-B4ySybtH.js` | `/chats/${e}/delete` |
-| `index-B4ySybtH.js` | `/chats/${e}/file-links` |
-| `index-B4ySybtH.js` | `/chats/${e}/heard` |
-| `index-B4ySybtH.js` | `/chats/${e}/messages` |
-| `index-B4ySybtH.js` | `/chats/${e}/messages/${t}` |
-| `index-B4ySybtH.js` | `/chats/${e}/messages/${t}/heard` |
-| `index-B4ySybtH.js` | `/chats/${e}/messages/${t}/reactions` |
-| `index-B4ySybtH.js` | `/chats/${e}/messages/around/${t}?limit=${n}` |
-| `index-B4ySybtH.js` | `/chats/${e}/messages/delete-for-all` |
-| `index-B4ySybtH.js` | `/chats/${e}/messages/delete-for-me` |
-| `index-B4ySybtH.js` | `/chats/${e}/messages/forward` |
-| `index-B4ySybtH.js` | `/chats/${e}/mute` |
-| `index-B4ySybtH.js` | `/chats/${e}/pin` |
-| `index-B4ySybtH.js` | `/chats/${e}/read` |
-| `index-B4ySybtH.js` | `/chats/${e}/unread` |
-| `index-B4ySybtH.js` | `/chats/${e}?manual_unread=1` |
-| `index-B4ySybtH.js` | `/chats/dm` |
-| `index-B4ySybtH.js` | `/chats/unread?manual_unread=1` |
-| `index-B4ySybtH.js` | `/checkout/handoff` |
-| `index-B4ySybtH.js` | `/child-safety` |
-| `index-B4ySybtH.js` | `/comments/${e}` |
-| `index-B4ySybtH.js` | `/comments/${e}/like` |
-| `index-B4ySybtH.js` | `/comments/${e}/replies` |
-| `index-B4ySybtH.js` | `/comments/${e}/restore` |
-| `index-B4ySybtH.js` | `/consent?flow=` |
-| `index-B4ySybtH.js` | `/cookies` |
-| `index-B4ySybtH.js` | `/correctors/apply` |
-| `index-B4ySybtH.js` | `/correctors/cancel` |
-| `index-B4ySybtH.js` | `/correctors/inventory` |
-| `index-B4ySybtH.js` | `/correctors/report` |
-| `index-B4ySybtH.js` | `/delete-account` |
-| `index-B4ySybtH.js` | `/event` |
-| `index-B4ySybtH.js` | `/event-files/` |
-| `index-B4ySybtH.js` | `/event/alice-ai` |
-| `index-B4ySybtH.js` | `/event/alice-ai?source=push_tasks_reminder` |
-| `index-B4ySybtH.js` | `/event/halloween` |
-| `index-B4ySybtH.js` | `/external` |
-| `index-B4ySybtH.js` | `/favicon.ico` |
-| `index-B4ySybtH.js` | `/files/${e}` |
-| `index-B4ySybtH.js` | `/files/avatar` |
-| `index-B4ySybtH.js` | `/files/banner-drawing` |
-| `index-B4ySybtH.js` | `/files/upload` |
-| `index-B4ySybtH.js` | `/forgot-` |
-| `index-B4ySybtH.js` | `/forgot-password` |
-| `index-B4ySybtH.js` | `/hashtags/trending` |
-| `index-B4ySybtH.js` | `/legal` |
-| `index-B4ySybtH.js` | `/legal/` |
-| `index-B4ySybtH.js` | `/login` |
-| `index-B4ySybtH.js` | `/login/` |
-| `index-B4ySybtH.js` | `/logout` |
-| `index-B4ySybtH.js` | `/logout-all` |
-| `index-B4ySybtH.js` | `/messenger-sw.js` |
-| `index-B4ySybtH.js` | `/methods` |
-| `index-B4ySybtH.js` | `/notifications` |
-| `index-B4ySybtH.js` | `/notifications/` |
-| `index-B4ySybtH.js` | `/notifications/count` |
-| `index-B4ySybtH.js` | `/notifications/read-all` |
-| `index-B4ySybtH.js` | `/notifications/settings` |
-| `index-B4ySybtH.js` | `/notifications/stream` |
-| `index-B4ySybtH.js` | `/onboarding` |
-| `index-B4ySybtH.js` | `/phone/attach` |
-| `index-B4ySybtH.js` | `/phone/password` |
-| `index-B4ySybtH.js` | `/phone/reset-password` |
-| `index-B4ySybtH.js` | `/phone/start` |
-| `index-B4ySybtH.js` | `/phone/sync` |
-| `index-B4ySybtH.js` | `/platform/announcements` |
-| `index-B4ySybtH.js` | `/platform/changelog` |
-| `index-B4ySybtH.js` | `/post-notebooks/inventory` |
-| `index-B4ySybtH.js` | `/posts` |
-| `index-B4ySybtH.js` | `/posts/${e}` |
-| `index-B4ySybtH.js` | `/posts/${e}/comments` |
-| `index-B4ySybtH.js` | `/posts/${e}/like` |
-| `index-B4ySybtH.js` | `/posts/${e}/pin` |
-| `index-B4ySybtH.js` | `/posts/${e}/poll/vote` |
-| `index-B4ySybtH.js` | `/posts/${e}/repost` |
-| `index-B4ySybtH.js` | `/posts/${e}/restore` |
-| `index-B4ySybtH.js` | `/posts/user/${e}` |
-| `index-B4ySybtH.js` | `/posts/user/${e}/liked` |
-| `index-B4ySybtH.js` | `/presence` |
-| `index-B4ySybtH.js` | `/presence/${e}` |
-| `index-B4ySybtH.js` | `/privacy` |
-| `index-B4ySybtH.js` | `/profile` |
-| `index-B4ySybtH.js` | `/profile-avatar/` |
-| `index-B4ySybtH.js` | `/reactions/available` |
-| `index-B4ySybtH.js` | `/recurring-terms` |
-| `index-B4ySybtH.js` | `/red-pens/apply` |
-| `index-B4ySybtH.js` | `/red-pens/cancel` |
-| `index-B4ySybtH.js` | `/red-pens/inventory` |
-| `index-B4ySybtH.js` | `/red-pens/report` |
-| `index-B4ySybtH.js` | `/refresh` |
-| `index-B4ySybtH.js` | `/register` |
-| `index-B4ySybtH.js` | `/reports` |
-| `index-B4ySybtH.js` | `/resend-` |
-| `index-B4ySybtH.js` | `/resend-otp` |
-| `index-B4ySybtH.js` | `/reset-` |
-| `index-B4ySybtH.js` | `/reset-password` |
-| `index-B4ySybtH.js` | `/search` |
-| `index-B4ySybtH.js` | `/settings/subscription` |
-| `index-B4ySybtH.js` | `/shop` |
-| `index-B4ySybtH.js` | `/sign-` |
-| `index-B4ySybtH.js` | `/sign-in` |
-| `index-B4ySybtH.js` | `/sign-up` |
-| `index-B4ySybtH.js` | `/subscription-terms` |
-| `index-B4ySybtH.js` | `/support` |
-| `index-B4ySybtH.js` | `/terms` |
-| `index-B4ySybtH.js` | `/terms-acceptance` |
-| `index-B4ySybtH.js` | `/users/` |
-| `index-B4ySybtH.js` | `/users/${e}` |
-| `index-B4ySybtH.js` | `/users/${e}/block` |
-| `index-B4ySybtH.js` | `/users/${e}/follow` |
-| `index-B4ySybtH.js` | `/users/${e}/followers` |
-| `index-B4ySybtH.js` | `/users/${e}/following` |
-| `index-B4ySybtH.js` | `/users/${e}/messages` |
-| `index-B4ySybtH.js` | `/users/check-username` |
-| `index-B4ySybtH.js` | `/users/follow-status` |
-| `index-B4ySybtH.js` | `/users/me` |
-| `index-B4ySybtH.js` | `/users/me/blocked` |
-| `index-B4ySybtH.js` | `/users/me/pin` |
-| `index-B4ySybtH.js` | `/users/me/pins` |
-| `index-B4ySybtH.js` | `/users/me/privacy` |
-| `index-B4ySybtH.js` | `/users/me/restore` |
-| `index-B4ySybtH.js` | `/users/profile` |
-| `index-B4ySybtH.js` | `/users/stats/top-clans` |
-| `index-B4ySybtH.js` | `/v1/aliceai/balance` |
-| `index-B4ySybtH.js` | `/v1/aliceai/inventory` |
-| `index-B4ySybtH.js` | `/v1/aliceai/nicknames` |
-| `index-B4ySybtH.js` | `/v1/aliceai/nicknames/active` |
-| `index-B4ySybtH.js` | `/v1/aliceai/shop` |
-| `index-B4ySybtH.js` | `/v1/auth/sessions` |
-| `index-B4ySybtH.js` | `/v1/auth/sessions/${e}` |
-| `index-B4ySybtH.js` | `/v1/event-assets/` |
-| `index-B4ySybtH.js` | `/v1/event/status` |
-| `index-B4ySybtH.js` | `/v1/halloween` |
-| `index-B4ySybtH.js` | `/v1/i` |
-| `index-B4ySybtH.js` | `/v1/portal` |
-| `index-B4ySybtH.js` | `/v1/subscription/` |
-| `index-B4ySybtH.js` | `/v1/subscription/auto-renewal` |
-| `index-B4ySybtH.js` | `/v1/subscription/bind-card` |
-| `index-B4ySybtH.js` | `/v1/subscription/checkout-release` |
-| `index-B4ySybtH.js` | `/v1/subscription/checkout-state` |
-| `index-B4ySybtH.js` | `/v1/subscription/gift-giver/` |
-| `index-B4ySybtH.js` | `/v1/subscription/gifts` |
-| `index-B4ySybtH.js` | `/v1/subscription/gifts/${e}` |
-| `index-B4ySybtH.js` | `/v1/subscription/international-checkouts` |
-| `index-B4ySybtH.js` | `/v1/subscription/methods` |
-| `index-B4ySybtH.js` | `/v1/subscription/methods/${e}` |
-| `index-B4ySybtH.js` | `/v1/subscription/methods/${e}/default` |
-| `index-B4ySybtH.js` | `/v1/subscription/pay` |
-| `index-B4ySybtH.js` | `/v1/x` |
-| `index-B4ySybtH.js` | `/verification` |
-| `index-B4ySybtH.js` | `/verification/status` |
-| `index-B4ySybtH.js` | `/verification/submit` |
-| `index-B4ySybtH.js` | `/verify-` |
-| `index-B4ySybtH.js` | `/verify-email` |
-| `index-B4ySybtH.js` | `/verify-otp` |
-| `index-BRfD3UsF.js` | `/v1/portal` |
-| `index-Bp12w_Uk.js` | `/api/v1/auth` |
-| `index-Bp12w_Uk.js` | `/change/confirm` |
-| `index-Bp12w_Uk.js` | `/change/pending` |
-| `index-Bp12w_Uk.js` | `/change/proof` |
-| `index-Bp12w_Uk.js` | `/change/wait` |
-| `index-Bp12w_Uk.js` | `/email/attach` |
-| `index-Bp12w_Uk.js` | `/email/change` |
-| `index-Bp12w_Uk.js` | `/legal` |
-| `index-Bp12w_Uk.js` | `/methods` |
-| `index-Bp12w_Uk.js` | `/phone/change` |
-| `index-Bp12w_Uk.js` | `/privacy` |
-| `index-Bp12w_Uk.js` | `/resend-otp` |
-| `index-Bp12w_Uk.js` | `/set-password` |
-| `index-Bp12w_Uk.js` | `/subscription-terms` |
-| `index-Bp12w_Uk.js` | `/terms` |
-| `index-Bp12w_Uk.js` | `/verify-otp` |
-| `index-CSxw4BWP.js` | `/search` |
-| `index-C_di8fNa.js` | `/100` |
-| `index-C_di8fNa.js` | `/chats/${B.chat_id}` |
-| `index-C_di8fNa.js` | `/chats/new/${c}` |
-| `index-CfwjuDLC.js` | `/forgot-password` |
-| `index-CfwjuDLC.js` | `/onboarding` |
-| `index-CfwjuDLC.js` | `/register` |
-| `index-CfwjuDLC.js` | `/reset-password` |
-| `index-CkHyJiJD.js` | `/forgot-password` |
-| `index-CkHyJiJD.js` | `/login` |
-| `index-CkHyJiJD.js` | `/privacy` |
-| `index-CkHyJiJD.js` | `/terms` |
-| `index-Ckv4brgN.js` | `/login` |
-| `index-DdiG3ulp.js` | `/api/legal-documents?scope=social` |
-| `index-DdiG3ulp.js` | `/legal` |
-| `index-DdiG3ulp.js` | `/legal/${i.slug}` |
-| `index-DdiG3ulp.js` | `/legal/${n}` |
-| `index-DdiG3ulp.js` | `/legal/${n}/history` |
-| `index-DdiG3ulp.js` | `/legal/${n}/versions/${c.version}` |
-| `index-DmKvf1P6.js` | `/chats/${p.chat_id}` |
-| `index-DmKvf1P6.js` | `/chats/new/${t}` |
-| `index-DoaNurh5.js` | `/shop${e?` |
-| `index-Dt0DYNDq.js` | `/login` |
-| `index-F7p_2cTQ.js` | `/login` |
-| `index-nLRuUBw7.js` | `/cookies` |
-| `index-nLRuUBw7.js` | `/privacy` |
-| `index-nLRuUBw7.js` | `/terms` |
-| `messengerMediaApi-CdFHD6Y6.js` | `/media/upload/${o}/finalize` |
-| `messengerMediaApi-CdFHD6Y6.js` | `/media/upload/init` |
-| `route-DMs4LD2m.js` | `/chats` |
-| `route-DMs4LD2m.js` | `/chats/${Mt.chatId}` |
-| `route-DMs4LD2m.js` | `/chats/${P.chatId}?message=${P.message.message_id}` |
-| `route-DMs4LD2m.js` | `/chats/${Te}` |
-| `route-DMs4LD2m.js` | `/chats/${w}` |
-| `route-DMs4LD2m.js` | `/chats/new/${ne}` |
-| `route-DMs4LD2m.js` | `/chats/new/${v}` |
-| `route-DMs4LD2m.js` | `/chats?gift=` |
-| `route-DMs4LD2m.js` | `/chats?subscription=self` |
-| `route-DMs4LD2m.js` | `/messenger/entry` |
-| `route-DMs4LD2m.js` | `/pins/nuksta-gift-giver.gif` |
-| `usePurchaseDialog-vo7rPjIe.js` | `/recurring-terms` |
-| `usePurchaseDialog-vo7rPjIe.js` | `/subscription-terms` |
+| Чаты | `/chats`, `/chats/{id}`, `/chats/unread`, `/chats/dm` |
+| Настройки чата | `/chats/{id}/pin`, `/mute`, `/unread`, `/read`, `/accept` |
+| Удаление чата | `/chats/{id}/delete`, `/clear-history`, `/clear-history-all` |
+| Сообщения | `/chats/{id}/messages`, `/messages/{message}`, `/messages/around/{message}?limit=` |
+| Удаление и пересылка | `/messages/delete-for-me`, `/messages/delete-for-all`, `/messages/forward` |
+| Реакции | `/chats/{id}/messages/{message}/reactions`, `/reactions/available` |
+| Голосовые | `/chats/{id}/heard`, `/chats/{id}/messages/{message}/heard` |
+| Файлы | `/chats/{id}/file-links`, `/browser-file-session` |
+| Загрузка файлов | `/media/upload/init`, `/media/upload/{id}/finalize` |
+| Typing и статусы | `/chats/{id}/action`, `/presence`, `/presence/{id}` |
+| Сообщение пользователю | `/users/{id}/messages` |
+
+## Пользователи и профиль
+
+`/users/{id}`, `/users/me`, `/users/me/privacy`, `/users/me/pin`, `/users/me/pins`, `/users/me/blocked`, `/users/me/restore`, `/users/profile`, `/users/check-username`, `/users/follow-status`, `/users/{id}/follow`, `/users/{id}/followers`, `/users/{id}/following`, `/users/{id}/block`, `/users/stats/top-clans`.
+
+Файлы профиля: `/files/avatar`, `/files/banner-drawing`, `/files/upload`, `/files/{id}`, `/profile-avatar/`.
+
+## Вход и сессии
+
+`/api/v1/auth/` с подпутями `/refresh`, `/register`, `/verify-otp`, `/resend-otp`, `/reset-password`, `/change-password`, `/set-password`, `/logout`, `/logout-all`, `/sign-in`, `/sign-up`, `/methods`.
+
+Телефон и почта: `/phone/start`, `/phone/sync`, `/phone/attach`, `/phone/change`, `/phone/password`, `/phone/reset-password`, `/phone/config`, `/phone/resume`, `/phone/reverse/`, `/email/attach`, `/email/change`, `/change/confirm`, `/change/pending`, `/change/proof`, `/change/wait`.
+
+Сессии: `/v1/auth/sessions`, `/v1/auth/sessions/{id}`. Также найдены `/verification`, `/verification/status`, `/verification/submit`, `/captcha/page`.
+
+## Посты, комментарии, уведомления
+
+| Область | Маршруты |
+|---|---|
+| Посты | `/posts`, `/posts/{id}`, `/posts/user/{id}`, `/posts/user/{id}/liked`, `/posts/{id}/like`, `/pin`, `/repost`, `/restore`, `/poll/vote`, `/comments` |
+| Комментарии | `/comments/{id}`, `/like`, `/replies`, `/restore` |
+| Уведомления | `/notifications`, `/count`, `/read-all`, `/settings`, `/stream` |
+| Прочее | `/search`, `/hashtags/trending`, `/reports`, `/platform/announcements`, `/platform/changelog` |
+
+## События, магазин и подписки
+
+Чтобы не загромождать список, перечислены только корни.
+
+- **События:** `/event`, `/v1/event/status`, `/api/v1/event-assets/`, `/event-files/`.
+- **Подписка и оплата:** `/v1/subscription/` (`/methods`, `/pay`, `/gifts`, `/bind-card`, `/auto-renewal`, `/checkout-state`, `/checkout-release`, `/international-checkouts`, `/gift-giver/`), `/checkout/handoff`, `/shop`, `/settings/subscription`.
+- **Прочее:** `/v1/portal`.
+
+## Юридические страницы и интерфейс
+
+`/legal`, `/legal/{slug}`, `/legal/{slug}/history`, `/legal/{slug}/versions/{version}`, `/api/legal-documents?scope=social`, `/terms`, `/privacy`, `/cookies`, `/child-safety`, `/subscription-terms`, `/recurring-terms`, `/consent?flow=`, `/support`, `/delete-account`, `/onboarding`, `/messenger/entry`, `/messenger-sw.js`.
+
+Это в основном страницы интерфейса, а не API.
