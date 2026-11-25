@@ -1,0 +1,45 @@
+{#
+  Ссылки на коммит и PR/MR: ([#5](url), [abcdef0](url)), как в release-it.
+#}{%  macro commit_links(commit)
+%}{%    set links = []
+%}{%    if commit.linked_merge_request != ""
+%}{%      set _ = links.append("[%s](%s)" | format(
+              commit.linked_merge_request,
+              commit.linked_merge_request | pull_request_url
+            ))
+%}{%    endif
+%}{%    set _ = links.append("[%s](%s)" | format(
+            commit.short_hash,
+            commit.hexsha | commit_hash_url
+          ))
+%}{{    " (%s)" | format(links | join(", "))
+}}{%  endmacro
+%}
+
+{#
+  Строка коммита: * **scope:** тема ([#5](url), [abcdef0](url))
+#}{%  macro commit_line(commit)
+%}{%    if commit.error is undefined
+%}{%      set scope = "**%s:** " | format(commit.scope) if commit.scope else ""
+%}{{      "* %s%s%s" | format(scope, commit.descriptions[0] | safe, commit_links(commit))
+}}{%    else
+%}{{      "* %s" | format((commit.commit.message | string).split("\n", maxsplit=1)[0])
+}}{%    endif
+%}{%  endmacro
+%}
+
+{#
+  Абзацы breaking changes / release notices с необязательным scope.
+#}{%  macro paragraphs(commit, attribute)
+%}{%    set ns = namespace(items=[])
+%}{%    if commit.error is undefined
+%}{%      for paragraph in commit | attr(attribute)
+%}{%        if paragraph | trim | length > 0
+%}{%          set prefix = "**%s:** " | format(commit.scope) if commit.scope else ""
+%}{%          set _ = ns.items.append("* %s%s" | format(prefix, paragraph | trim | safe))
+%}{%        endif
+%}{%      endfor
+%}{%    endif
+%}{{    ns.items | join("\n")
+}}{%  endmacro
+%}
