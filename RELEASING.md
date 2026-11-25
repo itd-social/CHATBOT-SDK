@@ -1,6 +1,6 @@
 # Релизный процесс ITD ChatBot SDK
 
-Версия хранится в `pyproject.toml`. Для Python-проекта используется [Python Semantic Release](https://python-semantic-release.readthedocs.io/) — аналог release-it, который вычисляет версию из Conventional Commits, обновляет `CHANGELOG.md`, создаёт коммит и тег, собирает пакет и создаёт GitHub Release. Настройки находятся в `pyproject.toml`.
+Версия хранится в `pyproject.toml`. Лицензия проекта — Apache License 2.0. Для Python-проекта используется [Python Semantic Release](https://python-semantic-release.readthedocs.io/) — аналог release-it, который вычисляет версию из Conventional Commits, обновляет `CHANGELOG.md`, создаёт коммит и тег, собирает пакет и создаёт GitHub Release. Настройки находятся в `pyproject.toml`.
 
 ## До релиза
 
@@ -64,7 +64,7 @@ semantic-release --noop version
 
 PyPI не вызывается автоматически после GitHub Release. Для отдельного выпуска предусмотрен ручной workflow **Publish to PyPI**. Перед первым запуском:
 
-1. Подтвердите, что имя `itd-chatbot-sdk` доступно в PyPI и закреплено за вашим аккаунтом. Лицензия проекта - BSL-1.0.
+1. Подтвердите, что имя `itd-chatbot-sdk` доступно в PyPI и закреплено за вашим аккаунтом. Лицензия проекта — Apache License 2.0.
 2. Настройте в PyPI Trusted Publisher для этого GitHub-репозитория: workflow `publish-pypi.yml`, environment `pypi`. При необходимости задайте в GitHub для environment `pypi` обязательное подтверждение владельца.
 3. Создайте обычный опубликованный GitHub Release с тегом вида `v0.1.0`. Версия в теге должна совпадать с `project.version` в этом коммите.
 4. Запустите **Publish to PyPI** вручную, указав тег. Workflow проверяет опубликованный GitHub Release и совпадение версии, запускает тесты, собирает пакет, выполняет `twine check` и публикует через OIDC. Только стабильные теги `vX.Y.Z` поддерживаются этим workflow.
