@@ -5,12 +5,14 @@
 ## Клиент
 
 ```python
-Bot(token, *, base_url="https://xn--d1ah4a.com", timeout=30.0, client=None, limiter=None)
+Bot(token, *, base_url="https://xn--d1ah4a.com", timeout=30.0, client=None, limiter=None,
+    get_retries=2)
 Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 ```
 
 - Токен передаётся без `Bearer`.
 - Закрывайте бота через `with Bot(...) as bot:` или `close()`. Переданный вами `httpx.Client` останется вашим.
+- `get_retries` — сколько раз повторить GET после сбоя сети или HTTP 500/502/503/504 (`0` отключает). Запись и скачивание не повторяются: [сбои сети](USAGE.md#сбои-сети).
 - `set_token(token)` заменяет access-токен, `refresh_count` показывает число обновлений.
 - Подробнее про сессию: [авторизация](AUTH.md).
 
@@ -25,7 +27,7 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 | `ResetRequired` | Журнал событий потерян (наследует `ProtocolError`, есть `response`) |
 | `SessionStorageError` | Не удалось сохранить или сверить сессию |
 
-Ошибки сети и таймауты приходят от `httpx`.
+Ошибки сети и таймауты приходят от `httpx`. `ErrorAction` (`SKIP`, `RETRY`, `STOP`) описывает решение об ошибке обработчика, см. [poll](#poll).
 
 ## Чаты
 
@@ -99,14 +101,21 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 
 ```python
 poll(since, handler, interval=2.0, on_checkpoint=None,
-     websocket=False, workers=1, min_fetch_interval=0.2)
+     websocket=False, workers=1, min_fetch_interval=0.2,
+     retry_initial_delay=1.0, retry_max_delay=60.0,
+     on_error=None, handler_retries=3, stop=None)
 ```
 
 Обрабатывает пакет и передаёт новый курсор в `on_checkpoint`. Если пакет был непустым и сдвинул курсор, следующий запрашивается сразу, иначе бот ждёт `interval`.
 
 - `websocket=True` — сигнал «есть новое» по WebSocket, события всё равно читаются по курсору. Запросы не чаще `min_fetch_interval`. Обрыв восстанавливается с паузой от 1 до 30 секунд.
 - `workers > 1` — разные чаты обрабатываются параллельно, порядок внутри чата сохраняется. Общее состояние защищайте блокировками.
-- Исключение в обработчике прерывает цикл, а пакет не подтверждается.
+- `retry_initial_delay`, `retry_max_delay` — паузы повтора `get_updates` после сбоя сети или 5xx (1, 2, 4… секунд, потолок 60). Остальные ошибки поднимаются.
+- `on_error(exc, event) -> ErrorAction | None` — решение об ошибке обработчика. Без хука или с `None` событие пропускается (`SKIP`). `RETRY` повторяет обработчик до `handler_retries` раз и может дублировать действия. `STOP` поднимает исключение, и курсор пакета не сохраняется.
+- `stop` — `threading.Event`: когда он установлен, бот дорабатывает пакет, сохраняет курсор и возвращается без исключения.
+- Временный сбой отметки прочтения (`read_mode="blocking"`) не теряет событие: пакет запрашивается заново, см. [сбой отметки прочтения](USAGE.md#если-обработчик-упал).
+
+Подробности и примеры: [если обработчик упал](USAGE.md#если-обработчик-упал), [остановка бота](USAGE.md#остановка-бота).
 
 ### Dispatcher
 
@@ -120,8 +129,9 @@ Dispatcher.from_bot(bot)
 |---|---|
 | `command(name)`, `message()`, `photo()`, `reaction()`, `edited()`, `deleted()` | Регистрация обработчиков с контекстом |
 | `on_message`, `on_event(type)` | Прежние обработчики |
+| `on_error()` | Один хук `(exc, event) -> ErrorAction \| None`; уходит в `poll` |
 | `handle(event)` | Обработать одно событие |
-| `run_polling(since=None, state_path=None, **kwargs)` | Запустить цикл; `kwargs` уходят в `poll` |
+| `run_polling(since=None, state_path=None, handle_signals=True, **kwargs)` | Запустить цикл; `kwargs` уходят в `poll`. В главном потоке SIGINT и SIGTERM дают мягкую остановку, второй SIGINT поднимает `KeyboardInterrupt` |
 | `close()` | Дождаться очереди отметок; `run_polling` вызывает его сам |
 
 `read_mode`: `"blocking"` (по умолчанию, отметка до обработчика), `"background"` (в фоне, ошибки только в лог), `"off"`.

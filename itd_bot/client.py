@@ -20,11 +20,21 @@ import httpx
 from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
 from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
+from .polling import (
+    ErrorAction,
+    backoff_delay,
+    error_status,
+    is_redeliver,
+    is_transient,
+    pause,
+    wait_for_wake,
+)
 from .post import Post
 from .rate_limits import RateLimiter, default_limiter
 from .user import User
 
 _log = logging.getLogger(__name__)
+_NO_RETRY = "_itd_no_retry"
 
 
 def _id(value: str) -> str:
@@ -38,6 +48,10 @@ class Bot:
 
     token is a short-lived access token; refresh_token enables cookie-based refresh.
     All responses are raw JSON to preserve unknown fields.
+
+    ``get_retries`` is how many times a GET is repeated after a network failure
+    or HTTP 500/502/503/504 (``0`` turns it off). Writes and streamed downloads
+    are never repeated.
     """
 
     def __init__(
@@ -50,6 +64,7 @@ class Bot:
         refresh_token: str | None = None,
         session_path: str | os.PathLike | None = ".itd-session.json",
         limiter: RateLimiter | None = None,
+        get_retries: int = 2,
     ):
         if token is None and refresh_token is None:
             raise ValueError("A bearer token or refresh token is required")
@@ -63,6 +78,11 @@ class Bot:
             or parts.fragment
         ):
             raise ValueError("base_url must be an http(s) origin or base path")
+        if isinstance(get_retries, bool) or not isinstance(get_retries, int):
+            raise ValueError("get_retries must be a non-negative integer")
+        if get_retries < 0:
+            raise ValueError("get_retries must be a non-negative integer")
+        self._get_retries = get_retries
         self._token = token
         self.base_url = base_url.rstrip("/")
         self._client = client or httpx.Client(
@@ -217,6 +237,51 @@ class Bot:
             for key in request_headers
         ):
             raise ValueError("authentication and host headers are managed by the SDK")
+        retries = self._get_retries if method.upper() == "GET" else 0
+        attempt = 0
+        while True:
+            try:
+                return self._api_request_once(
+                    method,
+                    path,
+                    params=params,
+                    json=json,
+                    content=content,
+                    files=files,
+                    headers=dict(request_headers),
+                    raw=raw,
+                )
+            except Exception as exc:
+                if (
+                    attempt >= retries
+                    or getattr(exc, _NO_RETRY, False)
+                    or not is_transient(exc)
+                ):
+                    raise
+                attempt += 1
+                delay = backoff_delay(attempt, 0.5, 2.0)
+                _log.warning(
+                    "GET failed (%s, status %s); retry %d of %d in %.1f s",
+                    type(exc).__name__,
+                    error_status(exc),
+                    attempt,
+                    retries,
+                    delay,
+                )
+                time.sleep(delay)
+
+    def _api_request_once(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Mapping[str, Any] | None,
+        json: Any,
+        content: bytes | None,
+        files: Any,
+        headers: dict[str, str],
+        raw: bool,
+    ) -> Any:
         cost = 1
         if (
             method.upper() == "POST"
@@ -226,10 +291,15 @@ class Bot:
             message_ids = json.get("message_ids")
             if isinstance(message_ids, list):
                 cost = max(1, len(message_ids))
-        access_token, generation = self._access_state()
+        try:
+            access_token, generation = self._access_state()
+        except Exception as exc:
+            # A scheduled refresh is a write too: do not repeat it with the GET.
+            setattr(exc, _NO_RETRY, True)
+            raise
         account = self._account_key(access_token)
         self._rate_limits.acquire(method, path, cost=cost, account=account)
-        request_headers.update(
+        headers.update(
             {
                 "Authorization": "Bearer " + access_token,
                 "X-Requested-With": "XMLHttpRequest",
@@ -243,7 +313,7 @@ class Bot:
             content=content,
             files=files,
             follow_redirects=False,
-            headers=request_headers,
+            headers=headers,
         )
         self._rate_limits.observe(response, method, path, account=account)
         if (
@@ -252,9 +322,8 @@ class Bot:
             and files is None
             and not path.startswith("/api/v1/auth/")
         ):
-            request_headers["Authorization"] = (
-                "Bearer "
-                + self._refresh_session.refresh_after_401(access_token, generation)
+            headers["Authorization"] = "Bearer " + self._refresh_after_401(
+                access_token, generation
             )
             self._rate_limits.acquire(method, path, cost=cost, account=account)
             response = self._client.request(
@@ -264,7 +333,7 @@ class Bot:
                 json=json,
                 content=content,
                 follow_redirects=False,
-                headers=request_headers,
+                headers=headers,
             )
             self._rate_limits.observe(response, method, path, account=account)
         if response.is_success and raw:
@@ -292,6 +361,15 @@ class Bot:
                 retry_after=response.headers.get("Retry-After"),
             )
         return data
+
+    def _refresh_after_401(self, rejected: str, generation: int) -> str:
+        assert self._refresh_session is not None
+        try:
+            return self._refresh_session.refresh_after_401(rejected, generation)
+        except Exception as exc:
+            # Refresh is a write: its failure must not trigger a GET retry.
+            setattr(exc, _NO_RETRY, True)
+            raise
 
     def upload_file(
         self,
@@ -1152,8 +1230,13 @@ class Bot:
         websocket: bool = False,
         workers: int = 1,
         min_fetch_interval: float = 0.2,
+        retry_initial_delay: float = 1.0,
+        retry_max_delay: float = 60.0,
+        on_error: Callable[[Exception, dict], ErrorAction | None] | None = None,
+        handler_retries: int = 3,
+        stop: threading.Event | None = None,
     ) -> None:
-        """Process batches; checkpoint only after all handlers of a batch succeed.
+        """Process batches; checkpoint after every batch whose handlers finished.
 
         The next batch is requested immediately only when the previous one had
         events and moved the cursor forward; otherwise the loop pauses for
@@ -1163,6 +1246,21 @@ class Bot:
         then start at least ``min_fetch_interval`` seconds apart. ``workers > 1``
         runs handlers of different chats in parallel threads, keeping order
         inside each chat.
+
+        A network failure or HTTP 500/502/503/504 from ``/updates`` is repeated
+        with the same cursor after a pause that doubles from
+        ``retry_initial_delay`` up to ``retry_max_delay``. Other errors,
+        including ``ResetRequired``, are raised.
+
+        When a handler raises ``Exception``, ``on_error(exc, event)`` may return
+        an ``ErrorAction``. Without a hook, or when it returns ``None``, the event
+        is skipped and logged. ``STOP`` raises the error and leaves the batch
+        without a checkpoint. ``RETRY`` runs the handler again up to
+        ``handler_retries`` times, then skips; it can duplicate side effects. An
+        error raised by the hook itself propagates. The hook may be called from
+        worker threads.
+
+        Set ``stop`` to finish the current batch, checkpoint and return.
         """
         if interval <= 0:
             raise ValueError("interval must be positive")
@@ -1170,38 +1268,107 @@ class Bot:
             raise ValueError("min_fetch_interval must not be negative")
         if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
             raise ValueError("workers must be a positive integer")
+        if retry_initial_delay <= 0:
+            raise ValueError("retry_initial_delay must be positive")
+        if retry_max_delay < retry_initial_delay:
+            raise ValueError("retry_max_delay must not be below retry_initial_delay")
+        if (
+            isinstance(handler_retries, bool)
+            or not isinstance(handler_retries, int)
+            or handler_retries < 0
+        ):
+            raise ValueError("handler_retries must be a non-negative integer")
         if websocket:
             self._require_websocket()
+        run = _EventRunner(
+            handler,
+            on_error,
+            handler_retries,
+            retry_initial_delay,
+            retry_max_delay,
+            stop,
+        )
         wake = threading.Event()
-        stop = threading.Event()
+        ws_stop = threading.Event()
+        ws_thread = None
         if websocket:
-            threading.Thread(
+            ws_thread = threading.Thread(
                 target=self._websocket_wakeups,
-                args=(wake, stop),
+                args=(wake, ws_stop),
                 name="itd-ws-wakeup",
                 daemon=True,
-            ).start()
+            )
+            ws_thread.start()
         executor = ThreadPoolExecutor(workers, "itd-handler") if workers > 1 else None
         last_fetch = None
+        failures = 0
+        clean = False
         try:
             while True:
+                if stop is not None and stop.is_set():
+                    clean = True
+                    return
                 if websocket and last_fetch is not None:
                     gap = last_fetch + min_fetch_interval - time.monotonic()
-                    if gap > 0:
-                        time.sleep(gap)
+                    if gap > 0 and pause(stop, gap):
+                        clean = True
+                        return
                 wake.clear()
                 last_fetch = time.monotonic()
                 try:
                     batch = self.get_updates(since)
                 except RateLimitError as exc:
-                    time.sleep(min(exc.retry_after_seconds, 60))
+                    if pause(stop, min(exc.retry_after_seconds, 60)):
+                        clean = True
+                        return
+                    continue
+                except Exception as exc:
+                    if not is_transient(exc):
+                        raise
+                    failures += 1
+                    delay = backoff_delay(
+                        failures, retry_initial_delay, retry_max_delay
+                    )
+                    _log.warning(
+                        "Updates request failed (%s, status %s); retry %d in %.1f s",
+                        type(exc).__name__,
+                        error_status(exc),
+                        failures,
+                        delay,
+                    )
+                    if pause(stop, delay):
+                        clean = True
+                        return
                     continue
                 events = batch["events"]
-                if executor is None:
-                    for event in events:
-                        handler(event)
-                else:
-                    _run_by_chat(executor, events, handler)
+                try:
+                    if executor is None:
+                        for event in events:
+                            run(event)
+                    else:
+                        _run_by_chat(executor, events, run)
+                except Exception as exc:
+                    if not is_redeliver(exc):
+                        raise
+                    # Failed before a handler started (read mark): ask for the
+                    # same batch again instead of losing the event.
+                    failures += 1
+                    delay = backoff_delay(
+                        failures, retry_initial_delay, retry_max_delay
+                    )
+                    _log.warning(
+                        "Read mark failed (%s, status %s); fetching the batch "
+                        "again, retry %d in %.1f s",
+                        type(exc).__name__,
+                        error_status(exc),
+                        failures,
+                        delay,
+                    )
+                    if pause(stop, delay):
+                        clean = True
+                        return
+                    continue
+                failures = 0
                 next_seq = batch["next_event_seq"]
                 if on_checkpoint is not None:
                     on_checkpoint(next_seq)
@@ -1210,13 +1377,16 @@ class Bot:
                 if events and advanced:
                     continue
                 if websocket:
-                    wake.wait(interval)
-                else:
-                    time.sleep(interval)
+                    wait_for_wake(wake, stop, interval)
+                elif pause(stop, interval):
+                    clean = True
+                    return
         finally:
-            stop.set()
+            ws_stop.set()
             if executor is not None:
-                executor.shutdown(wait=False, cancel_futures=True)
+                executor.shutdown(wait=clean, cancel_futures=not clean)
+            if clean and ws_thread is not None:
+                ws_thread.join(timeout=5.0)
 
     @staticmethod
     def _require_websocket() -> None:
@@ -1243,12 +1413,78 @@ class Bot:
             backoff = min(backoff * 2, 30.0)
 
 
+class _EventRunner:
+    """Apply the handler-error policy to one event at a time."""
+
+    def __init__(
+        self,
+        handler: Callable[[dict], None],
+        on_error: Callable[[Exception, dict], ErrorAction | None] | None,
+        retries: int,
+        initial: float,
+        maximum: float,
+        stop: threading.Event | None,
+    ) -> None:
+        self._handler, self._on_error, self._retries = handler, on_error, retries
+        self._initial, self._maximum, self._stop = initial, maximum, stop
+
+    def __call__(self, event: dict) -> None:
+        attempt = 0
+        while True:
+            try:
+                self._handler(event)
+                return
+            except Exception as exc:
+                if is_redeliver(exc):
+                    raise
+                action = self._decide(exc, event)
+                if action is ErrorAction.STOP:
+                    raise
+                if action is ErrorAction.RETRY and attempt < self._retries:
+                    attempt += 1
+                    delay = backoff_delay(attempt, self._initial, self._maximum)
+                    _log.warning(
+                        "Handler failed (%s) for event type %s; retry %d of %d in %.1f s",
+                        type(exc).__name__,
+                        _event_type(event),
+                        attempt,
+                        self._retries,
+                        delay,
+                    )
+                    # A stop request only shortens the pause; the retry still runs.
+                    pause(self._stop, delay)
+                    continue
+                _log.error(
+                    "Handler failed (%s) for event type %s; event skipped",
+                    type(exc).__name__,
+                    _event_type(event),
+                )
+                return
+
+    def _decide(self, exc: Exception, event: dict) -> ErrorAction | None:
+        if self._on_error is None:
+            return None
+        action = self._on_error(exc, event)
+        if action is not None and not isinstance(action, ErrorAction):
+            raise TypeError("on_error must return an ErrorAction or None")
+        return action
+
+
+def _event_type(event: dict) -> str:
+    kind = event.get("type")
+    return kind[:64] if isinstance(kind, str) else "?"
+
+
 def _run_by_chat(
     executor: ThreadPoolExecutor,
     events: list[dict],
     handler: Callable[[dict], None],
 ) -> None:
-    """Run handlers in parallel across chats, in order within each chat."""
+    """Run handlers in parallel across chats, in order within each chat.
+
+    If one handler raises, handlers that already started finish, no new event
+    starts, and the first error is raised.
+    """
     groups: dict[str | None, list[dict]] = {}
     for event in events:
         chat_id = event.get("chat_id")
@@ -1258,10 +1494,17 @@ def _run_by_chat(
         for event in events:
             handler(event)
         return
+    failed = threading.Event()
 
     def run(group: list[dict]) -> None:
         for event in group:
-            handler(event)
+            if failed.is_set():
+                return
+            try:
+                handler(event)
+            except BaseException:
+                failed.set()
+                raise
 
     futures = [executor.submit(run, group) for group in groups.values()]
     wait(futures)

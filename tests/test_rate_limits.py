@@ -4,7 +4,7 @@ from email.utils import format_datetime
 import httpx
 import pytest
 
-from itd_bot import APIError, Bot, RateLimitError
+from itd_bot import APIError, Bot, ErrorAction, RateLimitError
 from itd_bot.dispatcher import Dispatcher
 from itd_bot.rate_limits import RateLimitState
 
@@ -117,7 +117,7 @@ def test_poll_retries_fetch_but_never_replays_handler(monkeypatch):
     monkeypatch.setattr(bot, "get_updates", updates)
     monkeypatch.setattr("itd_bot.client.time.sleep", sleeps.append)
     with pytest.raises(RateLimitError) as exc:
-        bot.poll(1, handler)
+        bot.poll(1, handler, on_error=lambda error, event: ErrorAction.STOP)
     assert exc.value.retry_after_seconds == 4
     assert calls == [1, 1] and sleeps == [3]
     bot.close()

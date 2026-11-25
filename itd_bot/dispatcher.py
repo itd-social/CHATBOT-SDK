@@ -16,7 +16,8 @@ from typing import Any
 
 from .client import Bot
 from .context import EventContext, MessageContext
-from .errors import ProtocolError
+from .errors import ProtocolError, RateLimitError
+from .polling import ErrorAction, is_transient, mark_redeliver, stop_on_signals
 
 _COMMAND = re.compile(r"^/([A-Za-z0-9_]{1,32})(?:@([A-Za-z0-9_]{1,64}))?(?=\s|$)")
 _READ_MODES = frozenset({"background", "blocking", "off"})
@@ -70,6 +71,7 @@ class Dispatcher:
         self._message_handler: Callable[[MessageContext], Any] | None = None
         self._photo_handler: Callable[[MessageContext], Any] | None = None
         self._event_handlers: dict[str, Callable[[dict[str, Any]], Any]] = {}
+        self._error_handler: Callable[..., ErrorAction | None] | None = None
         self._typing_lock = threading.Lock()
         self._typing_last: dict[str, float] = {}
         self._read_lock = threading.Lock()
@@ -99,7 +101,14 @@ class Dispatcher:
         if self.read_mode == "off":
             return
         if self.read_mode == "blocking":
-            self.bot.mark_read(chat_id, message_id)
+            try:
+                self.bot.mark_read(chat_id, message_id)
+            except Exception as exc:
+                # The handler has not started, so fetching the batch again cannot
+                # repeat its work. Permanent errors still go to the error policy.
+                if is_transient(exc) or isinstance(exc, RateLimitError):
+                    mark_redeliver(exc)
+                raise
             return
         with self._read_lock:
             already_queued = chat_id in self._pending_reads
@@ -179,6 +188,27 @@ class Dispatcher:
             return handler
 
         return register
+
+    def on_error(
+        self,
+        handler: Callable[[Exception, dict[str, Any]], ErrorAction | None]
+        | None = None,
+    ) -> Callable:
+        """Register the one hook that decides what polling does after a handler fails.
+
+        Use ``@router.on_error()`` like the other decorators (``@router.on_error``
+        without brackets works too). The hook gets the exception and the raw event
+        and returns an ``ErrorAction`` or ``None`` (skip the event). It is passed
+        to ``poll``.
+        """
+
+        def register(func: Callable) -> Callable:
+            if self._error_handler is not None:
+                raise ValueError("error handler already registered")
+            self._error_handler = func
+            return func
+
+        return register if handler is None else register(handler)
 
     def command(self, name: str) -> Callable:
         name = name.removeprefix("/").lower()
@@ -308,9 +338,34 @@ class Dispatcher:
         since: int | None = None,
         *,
         state_path: str | os.PathLike | None = None,
+        handle_signals: bool = True,
         **kwargs: Any,
     ) -> None:
-        """Run polling; optionally persist the cursor after each successful batch."""
+        """Run polling; optionally persist the cursor after each processed batch.
+
+        With ``handle_signals`` (default) and in the main thread, the first
+        SIGINT or SIGTERM finishes the current batch, saves the cursor and
+        returns; a second SIGINT raises ``KeyboardInterrupt``. Previous signal
+        handlers are restored afterwards. Pass your own ``stop`` event to stop
+        from code. Other keyword arguments go to ``Bot.poll``.
+        """
+        if self._error_handler is not None:
+            kwargs.setdefault("on_error", self._error_handler)
+        if not handle_signals:
+            self._run_polling(since, state_path, kwargs)
+            return
+        stop = kwargs.get("stop")
+        if stop is None:
+            stop = kwargs["stop"] = threading.Event()
+        with stop_on_signals(stop):
+            self._run_polling(since, state_path, kwargs)
+
+    def _run_polling(
+        self,
+        since: int | None,
+        state_path: str | os.PathLike | None,
+        kwargs: dict[str, Any],
+    ) -> None:
         if state_path is None:
             if since is None:
                 raise ValueError("provide since or state_path")

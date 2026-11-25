@@ -3,7 +3,7 @@ import json
 import httpx
 import pytest
 
-from itd_bot import APIError, Bot, ProtocolError, ResetRequired
+from itd_bot import APIError, Bot, ErrorAction, ProtocolError, ResetRequired
 
 
 def make_bot(handler):
@@ -113,6 +113,11 @@ def test_poll_does_not_checkpoint_failed_batch(monkeypatch):
         raise RuntimeError("handler failed")
 
     with pytest.raises(RuntimeError):
-        bot.poll(0, fail, on_checkpoint=checkpoints.append)
+        bot.poll(
+            0,
+            fail,
+            on_error=lambda exc, event: ErrorAction.STOP,
+            on_checkpoint=checkpoints.append,
+        )
     assert checkpoints == []
     client.close()
