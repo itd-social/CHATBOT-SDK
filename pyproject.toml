@@ -65,3 +65,4 @@ allowed_tags = ["feat", "feature", "fix", "perf", "refactor", "revert", "build",
 
 [tool.semantic_release.changelog]
 mode = "update"
+template_dir = "templates"

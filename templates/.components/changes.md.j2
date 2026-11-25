@@ -1,0 +1,48 @@
+{%    from 'macros.md.j2' import commit_line, paragraphs
+%}{%  set sections = [
+      ("✨ Новые возможности", ["features", "feature"]),
+      ("🐛 Исправления", ["bug fixes"]),
+      ("⚡️ Производительность", ["performance improvements"]),
+      ("♻️ Рефакторинг", ["refactoring"]),
+      ("⏪️ Откаты изменений", ["revert"]),
+      ("📚 Документация", ["documentation"]),
+      ("💎 Стили", ["code style"]),
+      ("✅ Тесты", ["testing"]),
+      ("🛠 Прочее", ["chores"]),
+      ("📦 Сборка", ["build system"]),
+      ("👷 CI", ["continuous integration"]),
+    ]
+%}{%  set all_commits = []
+%}{%  for type_, commits in commit_objects if type_ != "unknown"
+%}{%    for commit in commits | rejectattr("error", "defined")
+%}{%      set _ = all_commits.append(commit)
+%}{%    endfor
+%}{%  endfor
+%}{%  for heading, types in sections
+%}{%    set selected = all_commits | selectattr("type", "in", types) | list
+%}{%    set ordered = selected | sort(attribute="descriptions.0,scope", case_sensitive=False)
+%}{%    set lines = []
+%}{%    for commit in ordered
+%}{%      set _ = lines.append(commit_line(commit))
+%}{%    endfor
+%}{%    if lines | length > 0
+%}{{      "\n### %s\n\n%s\n" | format(heading, lines | unique | join("\n"))
+}}{%    endif
+%}{%  endfor
+%}{%  set breaking = all_commits | selectattr("breaking_descriptions.0") | list
+%}{%  if breaking | length > 0
+%}{%    set lines = []
+%}{%    for commit in breaking | sort(attribute="breaking_descriptions.0,scope", case_sensitive=False)
+%}{%      set _ = lines.append(paragraphs(commit, "breaking_descriptions"))
+%}{%    endfor
+%}{{    "\n### ⚠️ Несовместимые изменения\n\n%s\n" | format(lines | unique | join("\n"))
+}}{%  endif
+%}{%  set notices = all_commits | selectattr("release_notices.0") | list
+%}{%  if notices | length > 0
+%}{%    set lines = []
+%}{%    for commit in notices | sort(attribute="release_notices.0,scope", case_sensitive=False)
+%}{%      set _ = lines.append(paragraphs(commit, "release_notices"))
+%}{%    endfor
+%}{{    "\n### ℹ️ Дополнительно\n\n%s\n" | format(lines | unique | join("\n"))
+}}{%  endif
+%}

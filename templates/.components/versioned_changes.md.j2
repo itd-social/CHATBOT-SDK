@@ -1,0 +1,13 @@
+{%  set versions = releases | list
+%}{%  set current_index = versions.index(release)
+%}{%  set version_label = release.version | string
+%}{%  if current_index + 1 < versions | length
+%}{%    set previous_tag = versions[current_index + 1].version.as_tag()
+%}{%    set compare = previous_tag | compare_url(release.version.as_tag())
+%}{%    set version_label = "[%s](%s)" | format(release.version, compare)
+%}{%  endif
+%}{{
+"## %s (%s)\n" | format(version_label, release.tagged_date.strftime("%Y-%m-%d"))
+}}{%  set commit_objects = release["elements"] | dictsort
+%}{%  include "changes.md.j2"
+-%}
