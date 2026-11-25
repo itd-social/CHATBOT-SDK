@@ -1,12 +1,4 @@
-{#  Заметки GitHub Release: те же разделы и смайлики, что в CHANGELOG.md.
-
-## [1.2.0](https://domain.com/namespace/repo/compare/v1.1.0...v1.2.0) (2026-11-24)
-
-### ✨ Новые возможности
-
-* **scope:** тема ([#10](...), [abcdef0](...))
-
-#}{%  set releases = context.history.released.values() | list
+{%  set releases = context.history.released.values() | list
 %}{%  set license_name = license_name | default("", True)
 %}{%  set curr_release_index = releases.index(release)
 %}{%  if mask_initial_release and curr_release_index == releases | length - 1

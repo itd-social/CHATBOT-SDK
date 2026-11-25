@@ -1,12 +1,4 @@
-{#  EXAMPLE:
-
-## [1.2.0](https://domain.com/namespace/repo/compare/v1.1.0...v1.2.0) (2026-11-24)
-
-{{ change_sections }}
-
-  Заголовок версии: номер без «v» как ссылка на сравнение с предыдущим тегом
-  (для первого релиза ссылки нет), затем дата, как в release-it.
-#}{%  set versions = releases | list
+{%  set versions = releases | list
 %}{%  set current_index = versions.index(release)
 %}{%  set version_label = release.version | string
 %}{%  if current_index + 1 < versions | length

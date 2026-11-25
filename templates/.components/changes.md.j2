@@ -1,21 +1,5 @@
 {%    from 'macros.md.j2' import commit_line, paragraphs
-%}{#
-Разделы идут в фиксированном порядке и со смайликами, как в max-ui
-(release-it + conventionalcommits). Внутри раздела коммиты сортируются по теме,
-затем по scope. PSR 10 кладёт в commit.type длинное имя категории (features, bug fixes, code style),
-поэтому раздел выбирается по нему; «feature» и «revert» PSR не переименовывает.
-
-EXAMPLE:
-
-### ✨ Новые возможности
-
-* **messages:** добавить пересылку ([#10](https://domain.com/namespace/repo/pull/10), [abcdef0](https://domain.com/namespace/repo/commit/HASH))
-
-### ⚠️ Несовместимые изменения
-
-* **rate-limits:** описание несовместимого изменения
-
-#}{%  set sections = [
+%}{%  set sections = [
       ("✨ Новые возможности", ["features", "feature"]),
       ("🐛 Исправления", ["bug fixes"]),
       ("⚡️ Производительность", ["performance improvements"]),
@@ -34,8 +18,7 @@ EXAMPLE:
 %}{%      set _ = all_commits.append(commit)
 %}{%    endfor
 %}{%  endfor
-%}{#
-#}{%  for heading, types in sections
+%}{%  for heading, types in sections
 %}{%    set selected = all_commits | selectattr("type", "in", types) | list
 %}{%    set ordered = selected | sort(attribute="descriptions.0,scope", case_sensitive=False)
 %}{%    set lines = []
@@ -46,8 +29,7 @@ EXAMPLE:
 %}{{      "\n### %s\n\n%s\n" | format(heading, lines | unique | join("\n"))
 }}{%    endif
 %}{%  endfor
-%}{#
-#}{%  set breaking = all_commits | selectattr("breaking_descriptions.0") | list
+%}{%  set breaking = all_commits | selectattr("breaking_descriptions.0") | list
 %}{%  if breaking | length > 0
 %}{%    set lines = []
 %}{%    for commit in breaking | sort(attribute="breaking_descriptions.0,scope", case_sensitive=False)
@@ -55,8 +37,7 @@ EXAMPLE:
 %}{%    endfor
 %}{{    "\n### ⚠️ Несовместимые изменения\n\n%s\n" | format(lines | unique | join("\n"))
 }}{%  endif
-%}{#
-#}{%  set notices = all_commits | selectattr("release_notices.0") | list
+%}{%  set notices = all_commits | selectattr("release_notices.0") | list
 %}{%  if notices | length > 0
 %}{%    set lines = []
 %}{%    for commit in notices | sort(attribute="release_notices.0,scope", case_sensitive=False)

@@ -1,6 +1,4 @@
-{#
-  Ссылки на коммит и PR/MR: ([#5](url), [abcdef0](url)), как в release-it.
-#}{%  macro commit_links(commit)
+{%  macro commit_links(commit)
 %}{%    set links = []
 %}{%    if commit.linked_merge_request != ""
 %}{%      set _ = links.append("[%s](%s)" | format(
@@ -16,9 +14,7 @@
 }}{%  endmacro
 %}
 
-{#
-  Строка коммита: * **scope:** тема ([#5](url), [abcdef0](url))
-#}{%  macro commit_line(commit)
+{%  macro commit_line(commit)
 %}{%    if commit.error is undefined
 %}{%      set scope = "**%s:** " | format(commit.scope) if commit.scope else ""
 %}{{      "* %s%s%s" | format(scope, commit.descriptions[0] | safe, commit_links(commit))
@@ -28,9 +24,7 @@
 %}{%  endmacro
 %}
 
-{#
-  Абзацы breaking changes / release notices с необязательным scope.
-#}{%  macro paragraphs(commit, attribute)
+{%  macro paragraphs(commit, attribute)
 %}{%    set ns = namespace(items=[])
 %}{%    if commit.error is undefined
 %}{%      for paragraph in commit | attr(attribute)
