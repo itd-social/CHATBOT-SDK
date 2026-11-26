@@ -164,9 +164,11 @@ def test_command_batch_and_unknown_fallback():
         )
         seen = []
 
-        @router.on_message
-        def fallback(event, message):
-            seen.append(message["text"])
+        with pytest.warns(DeprecationWarning, match=r"message\(\)"):
+
+            @router.on_message
+            def fallback(event, message):
+                seen.append(message["text"])
 
         router.handle(
             {

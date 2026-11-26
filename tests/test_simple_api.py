@@ -81,9 +81,11 @@ def test_context_commands_photo_fallback_and_legacy():
         legacy = Dispatcher(bot, self_user_id="self", auto_typing=False)
         old = []
 
-        @legacy.on_message
-        def old_handler(e, m):
-            old.append((e["chat_id"], m["text"]))
+        with pytest.warns(DeprecationWarning, match=r"message\(\)"):
+
+            @legacy.on_message
+            def old_handler(e, m):
+                old.append((e["chat_id"], m["text"]))
 
         legacy.handle(event())
         assert old == [("chat", "hello")]

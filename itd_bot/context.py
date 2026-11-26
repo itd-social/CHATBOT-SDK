@@ -8,6 +8,7 @@ from .errors import ProtocolError
 
 if TYPE_CHECKING:
     from .client import Bot
+    from .schemas import AttachmentPayload, MessagePayload, SendResponse, UpdateEvent
     from .user import User
 
 
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 class Attachment:
     bot: Bot
     chat_id: str
-    raw: dict[str, Any]
+    raw: AttachmentPayload
 
     @property
     def file_id(self) -> str | None:
@@ -45,7 +46,7 @@ class Attachment:
 class SentMessage:
     bot: Bot
     chat_id: str
-    raw: dict[str, Any]
+    raw: SendResponse
 
     @property
     def message_id(self) -> str:
@@ -66,8 +67,8 @@ class SentMessage:
 @dataclass(frozen=True)
 class MessageContext:
     bot: Bot
-    event: dict[str, Any]
-    message: dict[str, Any]
+    event: UpdateEvent
+    message: MessagePayload
 
     @property
     def chat_id(self) -> str:
@@ -109,7 +110,7 @@ class MessageContext:
         value = self.get_sender().is_followed_by
         return value if isinstance(value, bool) else None
 
-    def reply(self, text: str, **kwargs: Any) -> Any:
+    def reply(self, text: str, **kwargs: Any) -> SendResponse:
         return self.bot.send_message(
             self.chat_id, text, reply_to_id=self.message_id, **kwargs
         )
@@ -124,27 +125,27 @@ class MessageContext:
             raise ProtocolError("Send response has no message_id")
         return SentMessage(self.bot, self.chat_id, result)
 
-    def reply_photo(self, source: Any, **kwargs: Any) -> Any:
+    def reply_photo(self, source: Any, **kwargs: Any) -> SendResponse:
         return self.bot.send_photo(
             self.chat_id, source, reply_to_id=self.message_id, **kwargs
         )
 
-    def reply_video(self, source: Any, **kwargs: Any) -> Any:
+    def reply_video(self, source: Any, **kwargs: Any) -> SendResponse:
         return self.bot.send_video(
             self.chat_id, source, reply_to_id=self.message_id, **kwargs
         )
 
-    def reply_music(self, source: Any, **kwargs: Any) -> Any:
+    def reply_music(self, source: Any, **kwargs: Any) -> SendResponse:
         return self.bot.send_music(
             self.chat_id, source, reply_to_id=self.message_id, **kwargs
         )
 
-    def reply_file(self, source: Any, **kwargs: Any) -> Any:
+    def reply_file(self, source: Any, **kwargs: Any) -> SendResponse:
         return self.bot.send_file(
             self.chat_id, source, reply_to_id=self.message_id, **kwargs
         )
 
-    def reply_formatted(self, content: Any, **kwargs: Any) -> Any:
+    def reply_formatted(self, content: Any, **kwargs: Any) -> SendResponse:
         return self.bot.send_formatted(
             self.chat_id, content, reply_to_id=self.message_id, **kwargs
         )
@@ -167,7 +168,7 @@ class MessageContext:
 @dataclass(frozen=True)
 class EventContext:
     bot: Bot
-    event: dict[str, Any]
+    event: UpdateEvent
 
     @property
     def chat_id(self) -> str | None:

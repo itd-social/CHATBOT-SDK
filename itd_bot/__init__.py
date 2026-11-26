@@ -7,6 +7,20 @@ from .formatting import Text, utf16_length
 from .polling import ErrorAction
 from .post import Post
 from .rate_limits import RateLimitConfig, RateLimiter
+from .schemas import (
+    AttachmentPayload,
+    FileLink,
+    FileLinksResponse,
+    MessagePayload,
+    ReactionEntry,
+    ReactionsResponse,
+    ReactionValue,
+    SendResponse,
+    UpdateEvent,
+    UpdatesResponse,
+    UploadFinalizeResponse,
+    UploadInitResponse,
+)
 from .user import User
 
 __all__ = [
@@ -32,4 +46,16 @@ __all__ = [
     "ErrorAction",
     "Text",
     "utf16_length",
+    "AttachmentPayload",
+    "FileLink",
+    "FileLinksResponse",
+    "MessagePayload",
+    "ReactionEntry",
+    "ReactionValue",
+    "ReactionsResponse",
+    "SendResponse",
+    "UpdateEvent",
+    "UpdatesResponse",
+    "UploadFinalizeResponse",
+    "UploadInitResponse",
 ]

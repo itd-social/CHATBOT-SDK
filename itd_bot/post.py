@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .client import Bot
+    from .schemas import SendResponse
 
 
 @dataclass(frozen=True)
@@ -29,7 +30,7 @@ class Post:
 
     def share(
         self, chat_id: str, *, text: str = "", reply_to_id: str | None = None
-    ) -> dict:
+    ) -> SendResponse:
         return self._bot.send_message(
             chat_id,
             text,
