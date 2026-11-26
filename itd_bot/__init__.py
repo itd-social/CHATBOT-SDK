@@ -2,6 +2,7 @@ from .actions import ChatAction, ChatActionHandle
 from .client import APIError, Bot, ProtocolError, ResetRequired
 from .context import Attachment, EventContext, MessageContext, SentMessage
 from .dispatcher import CommandContext, Dispatcher
+from .enums import ChatType, EntityType
 from .errors import RateLimitError, SessionStorageError, UploadQuotaError
 from .formatting import Text, utf16_length
 from .polling import ErrorAction
@@ -25,6 +26,8 @@ from .user import User
 
 __all__ = [
     "Bot",
+    "ChatType",
+    "EntityType",
     "ChatAction",
     "ChatActionHandle",
     "User",
