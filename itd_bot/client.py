@@ -21,6 +21,7 @@ from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
 from .errors import APIError as APIError
 from .errors import ProtocolError, RateLimitError, ResetRequired, _api_error
+from .message_ids import _uuid7
 from .polling import (
     ErrorAction,
     backoff_delay,
@@ -52,12 +53,14 @@ def _send_body(
     entities: list | None,
     client_message_id: str | None,
 ) -> dict[str, Any]:
-    """Add the optional send fields; empty values are left out."""
+    """Add send fields and generate an ID only when none was supplied."""
     if attachments:
         body["attachments"] = attachments
     if entities:
         body["entities"] = entities
-    if client_message_id:
+    if client_message_id is None:
+        body["client_message_id"] = _uuid7()
+    elif client_message_id:
         body["client_message_id"] = client_message_id
     return body
 

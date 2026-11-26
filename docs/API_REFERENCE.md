@@ -24,6 +24,7 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 | `NukstaRequiredError` | Код `nuksta_required`; наследует `APIError` |
 | `BlockedError` | Код `blocked`; наследует `APIError` |
 | `MessagesClosedError` | Код `messages_closed`; наследует `APIError` |
+| `StaleClientMessageIdError` | Сообщение сервера `client_message_id is stale or clock is incorrect`; наследует `APIError` |
 | `RateLimitError` | Ответ 429 или локальная блокировка |
 | `UploadQuotaError` | Исчерпан бюджет загрузок (наследует `APIError`) |
 | `ProtocolError` | Неожиданный ответ сервера |
@@ -58,6 +59,8 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 | `forward_messages(chat_id, source_chat_id, message_ids, client_message_ids=None)` | Переслать; `client_message_ids` — `list[str]`, `dict[str, str]` или `None`, см. [руководство](USAGE.md#сообщения) |
 | `mark_read(chat_id, message_id)` | Прочитано до сообщения включительно |
 | `mark_voice_heard(chat_id, message_id)`, `get_heard_messages(chat_id, message_ids)` | Прослушивание голосовых |
+
+При отправке без `client_message_id` SDK создаёт UUIDv7. Явно переданный ID обрабатывается по прежним правилам. Флаг `replayed` остаётся в словаре ответа, если его прислал сервер; см. [клиентский ID](USAGE.md#клиентский-id-и-повтор).
 
 ## Статусы в чате
 
