@@ -117,9 +117,9 @@ def throughput(
 
     from itd_bot import Bot, Dispatcher, RateLimitConfig, RateLimiter
 
-    if read_mode not in {"blocking", "off"}:
+    if read_mode not in {"blocking", "batch", "off"}:
         raise ValueError(
-            "This benchmark requires blocking or off for deterministic time"
+            "This benchmark requires blocking, batch or off for deterministic time"
         )
     clock, stop = Clock(), threading.Event()
     counts: Counter[str] = Counter()
@@ -209,7 +209,7 @@ def main() -> None:
     parser.add_argument(
         "--read-modes",
         nargs="+",
-        choices=["blocking", "off"],
+        choices=["blocking", "batch", "off"],
         default=["blocking", "off"],
     )
     args = parser.parse_args()

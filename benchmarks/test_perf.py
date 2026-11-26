@@ -18,7 +18,9 @@ def test_microbench():
     print(json.dumps({"environment": metadata("pytest"), "microseconds": result}))
 
 
-@pytest.mark.parametrize("read_mode,reads", [("blocking", 120), ("off", 0)])
+@pytest.mark.parametrize(
+    "read_mode,reads", [("blocking", 120), ("batch", 48), ("off", 0)]
+)
 def test_fake_clock_throughput(read_mode, reads):
     result = throughput(read_mode)
     assert result["requests"] == {
