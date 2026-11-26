@@ -17,9 +17,9 @@ def prepare_photo(source: str | os.PathLike | bytes) -> tuple[bytes, str | None,
     with Image.open(io.BytesIO(data)) as image:
         if image.format == "GIF":
             return data, original_name, {"width": image.width, "height": image.height}
-        image = ImageOps.exif_transpose(image)
-        image.thumbnail((1920, 1920))
-        rgba = image.convert("RGBA")
+        photo = ImageOps.exif_transpose(image)
+        photo.thumbnail((1920, 1920))
+        rgba = photo.convert("RGBA")
         background = Image.new("RGB", rgba.size, "white")
         background.paste(rgba, mask=rgba.getchannel("A"))
         output = io.BytesIO()

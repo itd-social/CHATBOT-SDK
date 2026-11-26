@@ -12,7 +12,7 @@ import uuid
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote, urljoin, urlsplit
 
 import httpx
@@ -35,6 +35,22 @@ from .user import User
 
 _log = logging.getLogger(__name__)
 _NO_RETRY = "_itd_no_retry"
+
+
+def _send_body(
+    body: dict[str, Any],
+    attachments: list | None,
+    entities: list | None,
+    client_message_id: str | None,
+) -> dict[str, Any]:
+    """Add the optional send fields; empty values are left out."""
+    if attachments:
+        body["attachments"] = attachments
+    if entities:
+        body["entities"] = entities
+    if client_message_id:
+        body["client_message_id"] = client_message_id
+    return body
 
 
 def _id(value: str) -> str:
@@ -125,10 +141,14 @@ class Bot:
     def from_refresh_token(cls, refresh_token: str, **kwargs: Any) -> Bot:
         return cls(refresh_token=refresh_token, **kwargs)
 
+    def _static_token(self) -> str:
+        # Without a refresh session the constructor guarantees a bearer token.
+        return cast(str, self._token)
+
     def _access_token(self) -> str:
         if self._refresh_session is not None:
             return self._refresh_session.get_access_token()
-        return self._token
+        return self._static_token()
 
     def _account_key(self, access_token: str) -> str:
         """Stable opaque account key for rate-limit buckets; never the token itself.
@@ -161,7 +181,7 @@ class Bot:
     def _access_state(self) -> tuple[str, int]:
         if self._refresh_session is not None:
             return self._refresh_session.get_access_state()
-        return self._token, 0
+        return self._static_token(), 0
 
     @property
     def refresh_count(self) -> int:
@@ -734,13 +754,12 @@ class Bot:
         entities: list | None = None,
         client_message_id: str | None = None,
     ) -> dict:
-        body = {"text": text, "reply_to_id": reply_to_id}
-        if attachments:
-            body["attachments"] = attachments
-        if entities:
-            body["entities"] = entities
-        if client_message_id:
-            body["client_message_id"] = client_message_id
+        body = _send_body(
+            {"text": text, "reply_to_id": reply_to_id},
+            attachments,
+            entities,
+            client_message_id,
+        )
         return self.request("POST", f"/chats/{_id(chat_id)}/messages", json=body)
 
     def send_message_to_user(
@@ -752,13 +771,7 @@ class Bot:
         entities: list | None = None,
         client_message_id: str | None = None,
     ) -> dict:
-        body = {"text": text}
-        if attachments:
-            body["attachments"] = attachments
-        if entities:
-            body["entities"] = entities
-        if client_message_id:
-            body["client_message_id"] = client_message_id
+        body = _send_body({"text": text}, attachments, entities, client_message_id)
         return self.request("POST", f"/users/{_id(user_id)}/messages", json=body)
 
     def send_formatted(self, chat_id: str, content: Any, **kwargs: Any) -> dict:
@@ -778,7 +791,14 @@ class Bot:
         attachments: list | None = None,
         entities: list | None = None,
     ) -> dict:
-        body = {"text": text}
+        """Edit a message.
+
+        ``entities`` is sent whenever it is not None, so an empty list goes to
+        the server as ``[]``. ``send_message`` skips empty entities instead.
+        The SDK keeps the difference on purpose: an empty list may clear the
+        formatting on edit. Not verified on the live ITD.
+        """
+        body: dict[str, Any] = {"text": text}
         if attachments:
             body["attachments"] = attachments
         if entities is not None:
@@ -915,6 +935,15 @@ class Bot:
 
     def add_reaction(self, chat_id: str, message_id: str, emoji: str) -> Any:
         """Add an emoji while preserving the account's existing selected reactions."""
+        return self._update_reactions(chat_id, message_id, emoji, add=True)
+
+    def remove_reaction(self, chat_id: str, message_id: str, emoji: str) -> Any:
+        """Remove an emoji while preserving the account's other reactions."""
+        return self._update_reactions(chat_id, message_id, emoji, add=False)
+
+    def _update_reactions(
+        self, chat_id: str, message_id: str, emoji: str, *, add: bool
+    ) -> Any:
         if not isinstance(emoji, str) or not emoji:
             raise ValueError("emoji must be a non-empty string")
         current = self.get_reactions(chat_id, message_id)
@@ -924,43 +953,18 @@ class Bot:
             or not isinstance(current.get("reactions"), list)
         ):
             raise ProtocolError("Invalid reactions response")
-        selected = []
+        selected: list[Any] = []
         for item in current["reactions"]:
             if not isinstance(item, dict) or not isinstance(item.get("reaction"), dict):
                 raise ProtocolError("Invalid reaction entry")
             if item.get("chosen") is True:
                 selected.append(item["reaction"])
         reaction = {"type": "emoji", "emoji": emoji}
-        if reaction not in selected:
-            selected.append(reaction)
-        return self.set_reactions(
-            chat_id,
-            message_id,
-            selected,
-            expected_version=current["reaction_version"],
-            operation_id=str(uuid.uuid4()),
-        )
-
-    def remove_reaction(self, chat_id: str, message_id: str, emoji: str) -> Any:
-        """Remove an emoji while preserving the account's other reactions."""
-        if not isinstance(emoji, str) or not emoji:
-            raise ValueError("emoji must be a non-empty string")
-        current = self.get_reactions(chat_id, message_id)
-        if (
-            not isinstance(current, dict)
-            or not isinstance(current.get("reaction_version"), str)
-            or not isinstance(current.get("reactions"), list)
-        ):
-            raise ProtocolError("Invalid reactions response")
-        selected = []
-        for item in current["reactions"]:
-            if not isinstance(item, dict) or not isinstance(item.get("reaction"), dict):
-                raise ProtocolError("Invalid reaction entry")
-            if item.get("chosen") is True and item["reaction"] != {
-                "type": "emoji",
-                "emoji": emoji,
-            }:
-                selected.append(item["reaction"])
+        if add:
+            if reaction not in selected:
+                selected.append(reaction)
+        else:
+            selected = [item for item in selected if item != reaction]
         return self.set_reactions(
             chat_id,
             message_id,
@@ -1187,7 +1191,8 @@ class Bot:
                 )
             raise
         try:
-            if conn.handshake_response.status != 101:
+            handshake = conn.handshake_response
+            if handshake is None or handshake.status != 101:
                 raise ProtocolError("WebSocket handshake failed")
             last_ping = last_frame = time.monotonic()
             while stop is None or not stop.is_set():

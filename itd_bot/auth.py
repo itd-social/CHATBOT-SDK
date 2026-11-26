@@ -11,6 +11,7 @@ import time
 import uuid
 from http.cookies import SimpleCookie
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlsplit
 
 import httpx
@@ -70,13 +71,13 @@ class RefreshSession:
         self._storage_dirty = False
         if self._path is not None:
             if self._path.exists():
-                self._load()
+                self._load(self._path)
             else:
                 self._save()
 
-    def _load(self) -> None:
+    def _load(self, path: Path) -> None:
         try:
-            state = json.loads(self._path.read_text(encoding="utf-8"))
+            state = json.loads(path.read_text(encoding="utf-8"))
             if (
                 not isinstance(state, dict)
                 or state.get("version") != 1
@@ -161,7 +162,7 @@ class RefreshSession:
                 and expiry <= time.time() + 30
             ):
                 self._refresh()
-            return self._access_token
+            return self._fresh_token()
 
     def get_access_state(self) -> tuple[str, int]:
         with self._lock:
@@ -177,7 +178,11 @@ class RefreshSession:
             ):
                 return self._access_token
             self._refresh()
-            return self._access_token
+            return self._fresh_token()
+
+    def _fresh_token(self) -> str:
+        # _refresh stores a token or raises, so it is never None here.
+        return cast(str, self._access_token)
 
     def _refresh(self) -> None:
         if self._storage_dirty:

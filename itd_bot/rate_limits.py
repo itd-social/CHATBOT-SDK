@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timezone
 from email.utils import parsedate_to_datetime
+from typing import cast
 from urllib.parse import unquote
 
 import httpx
@@ -69,6 +70,8 @@ _CHAT_PATH = re.compile(r"/api/v1/messenger/chats/([^/]+)/")
 _USER_PATH = re.compile(r"/api/v1/messenger/users/([^/]+)/")
 
 BucketScope = tuple[str, ...]
+# Cooldown key: ("group", account, *scope) may hold account=None.
+DeadlineKey = tuple[str | None, ...]
 
 
 def _bucket_scope(group: str, method: str, path: str) -> BucketScope:
@@ -101,7 +104,7 @@ class RateLimitState:
         self._monotonic = monotonic
         self._wall_time = wall_time
         self._lock = threading.Lock()
-        self._deadlines: dict[tuple[str, str], tuple[float, str | None]] = {}
+        self._deadlines: dict[DeadlineKey, tuple[float, str | None]] = {}
 
     @staticmethod
     def _key(method: str, path: str) -> tuple[str, str]:
@@ -109,7 +112,7 @@ class RateLimitState:
 
     def _bucket_key(
         self, method: str, path: str, account: str | None = None
-    ) -> tuple[str, ...]:
+    ) -> DeadlineKey:
         return self._key(method, path)
 
     def acquire(
@@ -117,7 +120,7 @@ class RateLimitState:
     ) -> None:
         self.check(method, path, account)
 
-    def _on_group_cooldown(self, key: tuple[str, ...], deadline: float) -> None:
+    def _on_group_cooldown(self, key: DeadlineKey, deadline: float) -> None:
         """Called under the lock after a 429 set a cooldown for a limited group."""
 
     def _seconds(self, value: str | None, fallback: int) -> int:
@@ -207,6 +210,7 @@ class RateLimitState:
                 errors=detail.get("errors"),
             )
         scope = response.headers.get("X-RateLimit-Scope")
+        key: DeadlineKey
         if scope in {"ip_flood", "global_flood"}:
             key = ("*", "*")
         elif scope in {"new_recipients_hour", "new_recipients_day"}:
@@ -353,7 +357,7 @@ class RateLimiter(RateLimitState):
 
     def _bucket_key(
         self, method: str, path: str, account: str | None = None
-    ) -> tuple[str, ...]:
+    ) -> DeadlineKey:
         group = self._group(method, path)
         if group:
             return ("group", account, *_bucket_scope(group, method, path))
@@ -411,8 +415,8 @@ class RateLimiter(RateLimitState):
             for key in oldest[: excess + _MAX_BUCKETS // 4]:
                 del self._buckets[key]
 
-    def _on_group_cooldown(self, key: tuple[str, ...], deadline: float) -> None:
-        bucket = (key[1], tuple(key[2:]))
+    def _on_group_cooldown(self, key: DeadlineKey, deadline: float) -> None:
+        bucket = (key[1], cast(BucketScope, key[2:]))
         interval, burst = self._bucket_params(bucket[1][0])
         self._buckets[bucket] = max(
             self._buckets.get(bucket, 0.0), deadline + (burst - 1) * interval

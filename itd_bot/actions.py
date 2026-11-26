@@ -48,13 +48,18 @@ def _is_upload(action_name: str) -> bool:
     return action_name.startswith("upload_")
 
 
+def _is_real(value: Any) -> bool:
+    # A function, not isinstance in place: keeps ``value`` typed as Any.
+    return isinstance(value, numbers.Real)
+
+
 def _check_progress(value: Any) -> ProgressValue:
     """Return ``value`` if it is None or a finite number in 0..1, else raise."""
     if value is None:
         return None
     if (
         isinstance(value, bool)
-        or not isinstance(value, numbers.Real)
+        or not _is_real(value)
         or not math.isfinite(value)
         or not 0 <= value <= 1
     ):
@@ -103,18 +108,18 @@ class ChatActionHandle:
             or interval < 1.0
         ):
             raise ValueError("interval must be a number of at least 1.0 seconds")
-        self._bot = bot
-        self._chat_id = chat_id
-        self._interval = float(interval)
-        self._lock = threading.Lock()
+        self._bot: Bot = bot
+        self._chat_id: str = chat_id
+        self._interval: float = float(interval)
+        self._lock: threading.Lock = threading.Lock()
         self._source: ProgressSource = None
         self._last_progress: ProgressValue = None
         self._error: BaseException | None = None
-        self._stop = threading.Event()
+        self._stop: threading.Event = threading.Event()
         self._thread: threading.Thread | None = None
-        self._used = False
+        self._used: bool = False
         self._wait: Callable[[threading.Event, float], bool] = lambda ev, t: ev.wait(t)
-        self.progress = progress  # type: ignore[assignment]
+        self._set_progress(progress)
 
     @property
     def progress(self) -> ProgressValue:
@@ -130,6 +135,9 @@ class ChatActionHandle:
 
     @progress.setter
     def progress(self, value: ProgressSource) -> None:
+        self._set_progress(value)
+
+    def _set_progress(self, value: ProgressSource) -> None:
         if callable(value):
             source: ProgressSource = value
         else:

@@ -273,20 +273,20 @@ class Dispatcher:
         return self._event_decorator("message_deleted", "messages_deleted")
 
     def handle(self, event: dict[str, Any]) -> None:
-        typ = event.get("type")
+        typ: Any = event.get("type")
         if typ == "new_message":
             messages = [event.get("message")]
         elif typ == "new_messages":
             messages = event.get("messages", [])
         else:
-            handler = self._event_handlers.get(typ)
-            if handler:
+            event_handler = self._event_handlers.get(typ)
+            if event_handler:
                 chat_id = event.get("chat_id")
                 if isinstance(chat_id, str) and chat_id:
                     with self._typing(chat_id):
-                        handler(event)
+                        event_handler(event)
                 else:
-                    handler(event)
+                    event_handler(event)
             return
         if not isinstance(messages, list) or not isinstance(event.get("chat_id"), str):
             raise ValueError("invalid message event")
@@ -302,17 +302,17 @@ class Dispatcher:
                 raise ValueError("incoming message has no message_id")
 
             self._mark_read(event["chat_id"], message_id)
-            text = message.get("text")
+            text: Any = message.get("text")
             match = _COMMAND.match(text) if isinstance(text, str) else None
             if match:
                 target = match.group(2)
                 if target and (not self.username or target.lower() != self.username):
                     continue
                 name = match.group(1).lower()
-                handler = self._commands.get(name)
-                if handler:
+                command_handler = self._commands.get(name)
+                if command_handler:
                     with self._typing(event["chat_id"]):
-                        handler(
+                        command_handler(
                             CommandContext(
                                 self.bot,
                                 event,

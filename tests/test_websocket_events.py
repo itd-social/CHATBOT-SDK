@@ -203,6 +203,15 @@ def test_handshake_answer_other_than_101_is_a_protocol_error_and_closes(monkeypa
     assert connection.closed
 
 
+def test_missing_handshake_response_is_a_protocol_error_and_closes(monkeypatch):
+    connection = FakeConnection()
+    connection.handshake_response = None
+    install(monkeypatch, Connector(connection))
+    with pytest.raises(ProtocolError, match="handshake failed"):
+        next(make_bot().websocket_events())
+    assert connection.closed
+
+
 # --- reading frames ----------------------------------------------------------------------
 
 
