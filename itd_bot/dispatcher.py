@@ -17,6 +17,7 @@ from typing import Any, cast
 
 from .client import Bot
 from .context import EventContext, MessageContext
+from .dedup import DedupStore, MemoryDedupStore
 from .errors import ProtocolError, RateLimitError
 from .polling import ErrorAction, is_transient, mark_redeliver, stop_on_signals
 from .schemas import MessagePayload, UpdateEvent
@@ -43,6 +44,11 @@ class Dispatcher:
     before ``typing`` is shown; ``0`` sends it before the handler starts. Call
     ``close()`` (or use the dispatcher as a context manager) to flush queued
     read marks when handling events manually.
+
+    Successful incoming messages are deduplicated by default. ``dedup_capacity``
+    bounds the in-memory LRU cache; ``dedup_store`` supplies an atomic custom
+    store instead. ``deduplicate=False`` restores repeated delivery to handlers.
+    Failed handlers release their claims and may be retried.
     """
 
     def __init__(
@@ -55,6 +61,9 @@ class Dispatcher:
         typing_interval: float = 4.0,
         typing_delay: float = 0.5,
         read_mode: str = "blocking",
+        deduplicate: bool = True,
+        dedup_capacity: int = 4096,
+        dedup_store: DedupStore | None = None,
     ):
         if not self_user_id:
             raise ValueError("self_user_id is required to prevent self-replies")
@@ -64,6 +73,26 @@ class Dispatcher:
             raise ValueError("typing_delay must not be negative")
         if read_mode not in _READ_MODES:
             raise ValueError("read_mode must be 'background', 'blocking' or 'off'")
+        if not isinstance(deduplicate, bool):
+            raise ValueError("deduplicate must be a boolean")
+        if (
+            isinstance(dedup_capacity, bool)
+            or not isinstance(dedup_capacity, int)
+            or dedup_capacity < 1
+        ):
+            raise ValueError("dedup_capacity must be a positive integer")
+        if dedup_store is not None and not all(
+            callable(getattr(dedup_store, name, None))
+            for name in ("claim", "complete", "release")
+        ):
+            raise TypeError("dedup_store must implement claim, complete and release")
+        self._dedup_store: DedupStore | None = None
+        if deduplicate:
+            self._dedup_store = (
+                dedup_store
+                if dedup_store is not None
+                else MemoryDedupStore(dedup_capacity)
+            )
         self.bot, self.self_user_id = bot, self_user_id
         self.auto_typing, self.typing_interval = auto_typing, typing_interval
         self.typing_delay, self.read_mode = typing_delay, read_mode
@@ -310,37 +339,52 @@ class Dispatcher:
             if not isinstance(message_id, str) or not message_id:
                 raise ValueError("incoming message has no message_id")
 
-            self._mark_read(event["chat_id"], message_id)
-            text: Any = message.get("text")
-            match = _COMMAND.match(text) if isinstance(text, str) else None
-            if match:
-                target = match.group(2)
-                if target and (not self.username or target.lower() != self.username):
-                    continue
-                name = match.group(1).lower()
-                command_handler = self._commands.get(name)
-                if command_handler:
-                    with self._typing(event["chat_id"]):
-                        command_handler(
-                            CommandContext(
-                                self.bot,
-                                event,
-                                payload,
-                                name,
-                                text[match.end() :].strip(),
-                            )
+            store = self._dedup_store
+            if store is None:
+                self._handle_message(event, payload)
+                continue
+            key = (self.bot.base_url, self.self_user_id, event["chat_id"], message_id)
+            if not store.claim(key):
+                continue
+            try:
+                self._handle_message(event, payload)
+                store.complete(key)
+            except BaseException:
+                store.release(key)
+                raise
+
+    def _handle_message(self, event: UpdateEvent, message: MessagePayload) -> None:
+        self._mark_read(event["chat_id"], message["message_id"])
+        text: Any = message.get("text")
+        match = _COMMAND.match(text) if isinstance(text, str) else None
+        if match:
+            target = match.group(2)
+            if target and (not self.username or target.lower() != self.username):
+                return
+            name = match.group(1).lower()
+            command_handler = self._commands.get(name)
+            if command_handler:
+                with self._typing(event["chat_id"]):
+                    command_handler(
+                        CommandContext(
+                            self.bot,
+                            event,
+                            message,
+                            name,
+                            text[match.end() :].strip(),
                         )
-                    continue
-            context = MessageContext(self.bot, event, payload)
-            if self._photo_handler and context.photo:
-                with self._typing(event["chat_id"]):
-                    self._photo_handler(context)
-            elif self._message_handler:
-                with self._typing(event["chat_id"]):
-                    self._message_handler(context)
-            elif self._fallback:
-                with self._typing(event["chat_id"]):
-                    self._fallback(event, payload)
+                    )
+                return
+        context = MessageContext(self.bot, event, message)
+        if self._photo_handler and context.photo:
+            with self._typing(event["chat_id"]):
+                self._photo_handler(context)
+        elif self._message_handler:
+            with self._typing(event["chat_id"]):
+                self._message_handler(context)
+        elif self._fallback:
+            with self._typing(event["chat_id"]):
+                self._fallback(event, message)
 
     def run_polling(
         self,

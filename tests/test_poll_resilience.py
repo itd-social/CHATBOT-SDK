@@ -1079,7 +1079,8 @@ def test_transient_read_mark_failure_fetches_the_batch_again(
         bot.poll(0, router.handle, on_checkpoint=checkpoints.append)
     # The same cursor was asked for again and nothing was lost or checkpointed early.
     assert cursors == [0, 0, 2]
-    assert handled == ["1", "1", "2"] and checkpoints == [2]
+    assert handled == ["1", "2"] and checkpoints == [2]
+    assert marks == ["1", "2", "2"]
     assert sleeps == [1.0]
     assert "Read mark failed" in caplog.text and "private-text" not in caplog.text
     bot.close()

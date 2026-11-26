@@ -138,18 +138,22 @@ def test_command_routing_and_self_filter():
             seen.append(ctx.args)
             ctx.reply("Hi")
 
-        def event(text, sender="other"):
+        def event(text, sender="other", message_id="m"):
             return {
                 "type": "new_message",
                 "chat_id": "chat",
-                "message": {"message_id": "m", "sender_id": sender, "text": text},
+                "message": {
+                    "message_id": message_id,
+                    "sender_id": sender,
+                    "text": text,
+                },
             }
 
         router.handle(event("/start hello world"))
-        router.handle(event("/start@mybot arg"))
-        router.handle(event("/start@someone_else"))
-        router.handle(event("/start", "self"))
-        router.handle(event("/startx"))
+        router.handle(event("/start@mybot arg", message_id="m-2"))
+        router.handle(event("/start@someone_else", message_id="m-3"))
+        router.handle(event("/start", "self", message_id="m-4"))
+        router.handle(event("/startx", message_id="m-5"))
         assert seen == ["hello world", "arg"]
         assert len(replies) == 2 and replies[0]["reply_to_id"] == "m"
 
