@@ -20,7 +20,10 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 
 | Класс | Когда |
 |---|---|
-| `APIError` | Ошибка HTTP. Поля `status`, `code`, `errors`, `retry_after` |
+| `APIError` | Ошибка HTTP. Поля `status`, `code`, `errors`, `retry_after`, `response` (разобранный JSON или `None`) |
+| `NukstaRequiredError` | Код `nuksta_required`; наследует `APIError` |
+| `BlockedError` | Код `blocked`; наследует `APIError` |
+| `MessagesClosedError` | Код `messages_closed`; наследует `APIError` |
 | `RateLimitError` | Ответ 429 или локальная блокировка |
 | `UploadQuotaError` | Исчерпан бюджет загрузок (наследует `APIError`) |
 | `ProtocolError` | Неожиданный ответ сервера |
