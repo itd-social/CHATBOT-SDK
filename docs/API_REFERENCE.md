@@ -8,6 +8,7 @@
 Bot(token, *, base_url="https://xn--d1ah4a.com", timeout=30.0, client=None, limiter=None,
     get_retries=2, on_protocol_error="raise")
 Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
+Bot.from_env(**kwargs)
 ```
 
 - Токен передаётся без `Bearer`.
@@ -15,6 +16,7 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 - `get_retries` — сколько раз повторить GET после сбоя сети или HTTP 500/502/503/504 (`0` отключает). Запись и скачивание не повторяются: [сбои сети](USAGE.md#сбои-сети).
 - `set_token(token)` заменяет access-токен, `refresh_count` показывает число обновлений.
 - Подробнее про сессию: [авторизация](AUTH.md).
+- `from_env` читает `ITD_*` без автоматической загрузки `.env`; явные аргументы имеют приоритет. Копии `poll_options` и `dispatcher_options` передавайте опросу и диспетчеру. Имена переменных и пример — в [настройках окружения](ENVIRONMENT.md).
 - `on_protocol_error="skip"` продолжает опрос после повреждённого ответа `/updates`. Последние 32 фрагмента доступны в `protocol_errors` только в памяти; подробности и риск пропуска событий — в [разборе протокола](PROTOCOL.md).
 
 ## Ошибки

@@ -22,6 +22,7 @@ import httpx
 from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
 from .chat_queues import _poll_chat_queues
+from .environment import _environment_options
 from .errors import APIError as APIError
 from .errors import (
     ProtocolError,
@@ -120,6 +121,8 @@ class Bot:
         self._on_protocol_error = on_protocol_error
         self._protocol_errors: deque[Any] = deque(maxlen=32)
         self._protocol_lock = threading.Lock()
+        self._poll_options: dict[str, Any] = {}
+        self._dispatcher_options: dict[str, Any] = {}
         if token is None and refresh_token is None:
             raise ValueError("A bearer token or refresh token is required")
         if token is not None and (not token or "\n" in token or "\r" in token):
@@ -178,6 +181,28 @@ class Bot:
     @classmethod
     def from_refresh_token(cls, refresh_token: str, **kwargs: Any) -> Bot:
         return cls(refresh_token=refresh_token, **kwargs)
+
+    @classmethod
+    def from_env(cls, **kwargs: Any) -> Bot:
+        """Create a Bot from ITD_* environment variables, with explicit overrides.
+
+        No .env file is loaded. Forward ``dispatcher_options`` to Dispatcher
+        and ``poll_options`` to polling explicitly; neither contains credentials.
+        """
+        options, polling, dispatcher = _environment_options(os.environ.copy(), kwargs)
+        bot = cls(**options)
+        bot._poll_options, bot._dispatcher_options = polling, dispatcher
+        return bot
+
+    @property
+    def poll_options(self) -> dict[str, Any]:
+        """A copy of the nonsecret workers/interval settings read by from_env."""
+        return self._poll_options.copy()
+
+    @property
+    def dispatcher_options(self) -> dict[str, Any]:
+        """A copy of the nonsecret read_mode setting read by from_env."""
+        return self._dispatcher_options.copy()
 
     def _static_token(self) -> str:
         # Without a refresh session the constructor guarantees a bearer token.
