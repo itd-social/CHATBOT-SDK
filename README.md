@@ -36,6 +36,8 @@ python -m pip install "itd-chatbot-sdk[images]"     # сжатие фото
 
 ## Быстрый старт
 
+Для отправки сообщений аккаунту бота нужна подписка **«ИТД НУКСТА»**. Без неё SDK получает ошибку `APIError` с кодом `nuksta_required`: [как обработать](docs/USAGE.md#коды-ошибок-сервера).
+
 Вам понадобится `refresh_token` аккаунта бота. [Как его получить?](docs/AUTH.md#как-получить-refresh_token)
 
 ```python

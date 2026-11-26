@@ -73,7 +73,7 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 | `send_file(chat_id, source, text="", filename=None, mime=None, reply_to_id=None, client_message_id=None, metadata=None, on_progress=None)` | Загрузить и отправить |
 | `send_photo`, `send_video`, `send_music` (`send_audio`) | Отправить медиа с `caption`. `compress=True` для фото и видео |
 | `download_file(chat_id, file_id, destination=None)` | Без `destination` вернёт `bytes`, с путём запишет в новый файл и вернёт `Path` |
-| `get_media(chat_id, category, before=None, limit=None)` | Вложения чата по категории |
+| `get_media(chat_id, category, before=None, limit=None)` | Вложения чата; `category: str`, категории сайта — `"0"`…`"3"`, см. [соответствие](USAGE.md#вложения-чата-по-категориям) |
 | `get_file_links(chat_id, file_ids)` | Ссылки на файлы |
 | `create_file_session()` | Файловая сессия (cookie) |
 
