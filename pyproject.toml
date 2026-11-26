@@ -47,6 +47,11 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_optional = true
 
+[tool.pytest.ini_options]
+testpaths = ["tests", "benchmarks"]
+addopts = "-m 'not perf'"
+markers = ["perf: offline performance measurements and concurrency comparisons"]
+
 [[tool.mypy.overrides]]
 module = ["websocket", "websocket.*", "PIL", "PIL.*"]
 ignore_missing_imports = true

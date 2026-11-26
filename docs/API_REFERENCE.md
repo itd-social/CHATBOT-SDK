@@ -110,13 +110,15 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 poll(since, handler, interval=2.0, on_checkpoint=None,
      websocket=False, workers=1, min_fetch_interval=0.2,
      retry_initial_delay=1.0, retry_max_delay=60.0,
-     on_error=None, handler_retries=3, stop=None)
+     on_error=None, handler_retries=3, stop=None,
+     chat_queues=False, chat_queue_size=64)
 ```
 
 Обрабатывает пакет и передаёт новый курсор в `on_checkpoint`. Если пакет был непустым и сдвинул курсор, следующий запрашивается сразу, иначе бот ждёт `interval`.
 
 - `websocket=True` — сигнал «есть новое» по WebSocket, события всё равно читаются по курсору. Запросы не чаще `min_fetch_interval`. Обрыв восстанавливается с паузой от 1 до 30 секунд.
 - `workers > 1` — разные чаты обрабатываются параллельно, порядок внутри чата сохраняется. Общее состояние защищайте блокировками.
+- `chat_queues=True` — ограниченные очереди по чатам вместо ожидания всего пакета. `chat_queue_size=64` включает выполняемое событие; сохраняется только непрерывная последовательность завершённых событий. Требуется `event_seq` у каждого события. Условия остановки, повторов и заполнения — в [руководстве по очередям](CHAT_QUEUES.md).
 - `retry_initial_delay`, `retry_max_delay` — паузы повтора `get_updates` после сбоя сети или 5xx (1, 2, 4… секунд, потолок 60). Остальные ошибки поднимаются.
 - `on_error(exc, event) -> ErrorAction | None` — решение об ошибке обработчика. Без хука или с `None` событие пропускается (`SKIP`). `RETRY` повторяет обработчик до `handler_retries` раз и может дублировать действия. `STOP` поднимает исключение, и курсор пакета не сохраняется.
 - `stop` — `threading.Event`: когда он установлен, бот дорабатывает пакет, сохраняет курсор и возвращается без исключения.
@@ -128,9 +130,12 @@ poll(since, handler, interval=2.0, on_checkpoint=None,
 
 ```python
 Dispatcher(bot, *, self_user_id, username=None, auto_typing=True,
-           typing_interval=4.0, typing_delay=0.5, read_mode="blocking")
+           typing_interval=4.0, typing_delay=0.5, read_mode="blocking",
+           deduplicate=True, dedup_capacity=4096, dedup_store=None)
 Dispatcher.from_bot(bot)
 ```
+
+`read_mode="batch"` отмечает последнее входящее сообщение каждого чата один раз за пакет, до первого обработчика этого чата. Значение по умолчанию остаётся `"blocking"`. Сравнение с `background` и `off` — в [бюджете запросов](REQUEST_BUDGET.md).
 
 | Что | Описание |
 |---|---|
@@ -142,6 +147,8 @@ Dispatcher.from_bot(bot)
 | `close()` | Дождаться очереди отметок; `run_polling` вызывает его сам |
 
 `read_mode`: `"blocking"` (по умолчанию, отметка до обработчика), `"background"` (в фоне, ошибки только в лог), `"off"`.
+
+`deduplicate=False` отключает защиту от повторных сообщений. `dedup_capacity` задаёт размер стандартного `MemoryDedupStore`; внешний `dedup_store` реализует `DedupStore` (`claim`, `complete`, `release`), см. [дедупликацию](USAGE.md#защита-от-повторной-обработки).
 
 Подробнее про контекст и приоритеты: [руководство](USAGE.md#команды-и-обработчики).
 
