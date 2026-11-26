@@ -11,12 +11,12 @@ class Stop(Exception):
     pass
 
 
-def event(text="hello", attachments=None):
+def event(text="hello", attachments=None, message_id="m"):
     return {
         "type": "new_message",
         "chat_id": "chat",
         "message": {
-            "message_id": "m",
+            "message_id": message_id,
             "sender_id": "u",
             "text": text,
             "attachments": attachments or [],
@@ -55,7 +55,7 @@ def test_context_commands_photo_fallback_and_legacy():
         def message(ctx):
             seen.append((ctx.chat_id, ctx.message_id, ctx.text))
 
-        router.handle(event("/start args"))
+        router.handle(event("/start args", message_id="command-1"))
         router.handle(
             event(
                 "look",
@@ -67,6 +67,7 @@ def test_context_commands_photo_fallback_and_legacy():
                         "sizePlain": 3,
                     }
                 ],
+                message_id="photo-1",
             )
         )
         router.handle(event("normal"))

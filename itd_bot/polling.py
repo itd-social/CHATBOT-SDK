@@ -5,13 +5,14 @@ import random
 import signal
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
 import httpx
 
 from .errors import APIError, UploadQuotaError
+from .schemas import UpdateEvent
 
 TRANSIENT_STATUSES = frozenset({500, 502, 503, 504})
 WAIT_SLICE = 0.5
@@ -26,6 +27,23 @@ class ErrorAction(enum.Enum):
     SKIP = "skip"
     RETRY = "retry"
     STOP = "stop"
+
+
+class _BatchHandler:
+    """Internal adapter for dispatcher behavior scoped to one fetched packet."""
+
+    def __init__(
+        self,
+        handler: Callable[[UpdateEvent], None],
+        prepare: Callable[[list[UpdateEvent]], Callable[[UpdateEvent], None]],
+    ) -> None:
+        self._handler, self._prepare = handler, prepare
+
+    def __call__(self, event: UpdateEvent) -> None:
+        self._handler(event)
+
+    def for_batch(self, events: list[UpdateEvent]) -> Callable[[UpdateEvent], None]:
+        return self._prepare(events)
 
 
 def is_transient(exc: BaseException) -> bool:

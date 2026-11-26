@@ -16,7 +16,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from .errors import APIError, ProtocolError, SessionStorageError
+from .errors import APIError as APIError
+from .errors import ProtocolError, SessionStorageError, _api_error
 from .rate_limits import RateLimitState
 
 
@@ -209,16 +210,17 @@ class RefreshSession:
             try:
                 payload = response.json()
             except ValueError:
-                payload = {}
+                payload = None
             detail = payload.get("error", payload) if isinstance(payload, dict) else {}
             if not isinstance(detail, dict):
                 detail = {}
-            raise APIError(
+            raise _api_error(
                 response.status_code,
                 "Session refresh failed",
                 code=detail.get("code"),
                 errors=detail.get("errors"),
                 retry_after=response.headers.get("Retry-After"),
+                response=payload,
             )
         new_values = []
         removed = False
