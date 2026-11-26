@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import ANY
+
 import httpx
 import pytest
 from helpers import API, BASE, Transport, httpx_namespace, jwt, sent_json
@@ -26,7 +28,7 @@ CASES = [
         "POST",
         "/users/user-1/messages",
         {},
-        {"text": "hello"},
+        {"text": "hello", "client_message_id": ANY},
     ),
     (
         "send_message_to_user_all_fields",
@@ -63,7 +65,7 @@ CASES = [
         "POST",
         "/users/a%2Fb%20c/messages",
         {},
-        {"text": "hi"},
+        {"text": "hi", "client_message_id": ANY},
     ),
     (
         "edit_message_plain",

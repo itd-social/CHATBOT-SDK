@@ -19,9 +19,13 @@ import httpx
 
 from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
-from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
+from .chat_queues import _poll_chat_queues
+from .errors import APIError as APIError
+from .errors import ProtocolError, RateLimitError, ResetRequired, _api_error
+from .message_ids import _uuid7
 from .polling import (
     ErrorAction,
+    _BatchHandler,
     backoff_delay,
     error_status,
     is_redeliver,
@@ -58,12 +62,14 @@ def _send_body(
     entities: list | None,
     client_message_id: str | None,
 ) -> dict[str, Any]:
-    """Add the optional send fields; empty values are left out."""
+    """Add send fields and generate an ID only when none was supplied."""
     if attachments:
         body["attachments"] = attachments
     if entities:
         body["entities"] = entities
-    if client_message_id:
+    if client_message_id is None:
+        body["client_message_id"] = _uuid7()
+    elif client_message_id:
         body["client_message_id"] = client_message_id
     return body
 
@@ -383,7 +389,7 @@ class Bot:
             detail = data.get("error", data) if isinstance(data, dict) else {}
             if not isinstance(detail, dict):
                 detail = {}
-            raise APIError(
+            raise _api_error(
                 response.status_code,
                 str(
                     detail.get("detail")
@@ -394,6 +400,7 @@ class Bot:
                 code=detail.get("code"),
                 errors=detail.get("errors") or detail.get("violations"),
                 retry_after=response.headers.get("Retry-After"),
+                response=data,
             )
         return data
 
@@ -1137,13 +1144,13 @@ class Bot:
         if not response.is_success:
             response.read()
             try:
-                detail = response.json()
+                data = response.json()
             except ValueError:
-                detail = {}
-            detail = detail.get("error", detail) if isinstance(detail, dict) else {}
+                data = None
+            detail = data.get("error", data) if isinstance(data, dict) else {}
             if not isinstance(detail, dict):
                 detail = {}
-            raise APIError(
+            raise _api_error(
                 response.status_code,
                 str(
                     detail.get("detail")
@@ -1153,6 +1160,7 @@ class Bot:
                 code=detail.get("code"),
                 errors=detail.get("errors"),
                 retry_after=response.headers.get("Retry-After"),
+                response=data,
             )
         if destination is None:
             return response.read()
@@ -1322,6 +1330,8 @@ class Bot:
         on_error: Callable[[Exception, UpdateEvent], ErrorAction | None] | None = None,
         handler_retries: int = 3,
         stop: threading.Event | None = None,
+        chat_queues: bool = False,
+        chat_queue_size: int = 64,
     ) -> None:
         """Process batches; checkpoint after every batch whose handlers finished.
 
@@ -1333,6 +1343,11 @@ class Bot:
         then start at least ``min_fetch_interval`` seconds apart. ``workers > 1``
         runs handlers of different chats in parallel threads, keeping order
         inside each chat.
+
+        ``chat_queues=True`` reads ahead through bounded per-chat queues and
+        checkpoints the contiguous completed prefix, using each event's
+        ``event_seq``. ``chat_queue_size`` includes the running event. The
+        default remains the batch barrier; see docs/CHAT_QUEUES.md.
 
         A network failure or HTTP 500/502/503/504 from ``/updates`` is repeated
         with the same cursor after a pause that doubles from
@@ -1351,6 +1366,14 @@ class Bot:
         """
         if interval <= 0:
             raise ValueError("interval must be positive")
+        if not isinstance(chat_queues, bool):
+            raise ValueError("chat_queues must be a boolean")
+        if (
+            isinstance(chat_queue_size, bool)
+            or not isinstance(chat_queue_size, int)
+            or chat_queue_size < 1
+        ):
+            raise ValueError("chat_queue_size must be a positive integer")
         if min_fetch_interval < 0:
             raise ValueError("min_fetch_interval must not be negative")
         if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
@@ -1386,11 +1409,34 @@ class Bot:
                 daemon=True,
             )
             ws_thread.start()
-        executor = ThreadPoolExecutor(workers, "itd-handler") if workers > 1 else None
+        executor = (
+            ThreadPoolExecutor(workers, "itd-handler")
+            if workers > 1 and not chat_queues
+            else None
+        )
         last_fetch = None
         failures = 0
         clean = False
         try:
+            if chat_queues:
+                _poll_chat_queues(
+                    self.get_updates,
+                    run,
+                    since,
+                    checkpoint=on_checkpoint,
+                    workers=workers,
+                    capacity=chat_queue_size,
+                    interval=interval,
+                    min_fetch_interval=min_fetch_interval,
+                    websocket=websocket,
+                    wake=wake,
+                    stop=stop,
+                    retry_initial=retry_initial_delay,
+                    retry_max=retry_max_delay,
+                    prepare=run.for_batch,
+                )
+                clean = True
+                return
             while True:
                 if stop is not None and stop.is_set():
                     clean = True
@@ -1428,12 +1474,13 @@ class Bot:
                         return
                     continue
                 events = batch["events"]
+                batch_run = run.for_batch(events)
                 try:
                     if executor is None:
                         for event in events:
-                            run(event)
+                            batch_run(event)
                     else:
-                        _run_by_chat(executor, events, run)
+                        _run_by_chat(executor, events, batch_run)
                 except Exception as exc:
                     if not is_redeliver(exc):
                         raise
@@ -1514,6 +1561,18 @@ class _EventRunner:
     ) -> None:
         self._handler, self._on_error, self._retries = handler, on_error, retries
         self._initial, self._maximum, self._stop = initial, maximum, stop
+
+    def for_batch(self, events: list[UpdateEvent]) -> _EventRunner:
+        if not isinstance(self._handler, _BatchHandler):
+            return self
+        return _EventRunner(
+            self._handler.for_batch(events),
+            self._on_error,
+            self._retries,
+            self._initial,
+            self._maximum,
+            self._stop,
+        )
 
     def __call__(self, event: UpdateEvent) -> None:
         attempt = 0

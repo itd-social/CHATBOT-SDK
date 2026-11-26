@@ -40,17 +40,19 @@ pyproject.toml    зависимости, инструменты, версия
 ## Проверки перед PR
 
 ```sh
-python -m ruff check itd_bot examples tests
-python -m ruff format --check itd_bot examples tests
+python -m ruff check itd_bot examples tests benchmarks
+python -m ruff format --check itd_bot examples tests benchmarks
 python -m pytest -q
 python -m build
 ```
 
-- Автоформатирование: `python -m ruff format itd_bot examples tests`.
+- Автоформатирование: `python -m ruff format itd_bot examples tests benchmarks`.
 - Один тест: `python -m pytest tests/test_refresh_session.py -q`.
 - Хуки Ruff перед коммитом: [CONTRIBUTING.md](CONTRIBUTING.md#pre-commit).
 
 Тесты не ходят в ИТД. Для новой серверной операции используйте `httpx.MockTransport` и проверяйте URL, тело запроса, ошибки и состояние после сбоя, а не только удачный ответ.
+
+Замеры запускаются отдельно: `python -m pytest -m perf -q -s`. Методика, сравнение с v1.3.1 и результаты — в [производительности](docs/PERFORMANCE.md).
 
 ## Чеклист изменения SDK
 
