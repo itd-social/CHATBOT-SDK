@@ -12,6 +12,7 @@ class APIError(Exception):
         code: str | None = None,
         errors: Any = None,
         retry_after: str | None = None,
+        response: Any = None,
     ):
         super().__init__(message)
         self.status, self.code, self.errors, self.retry_after = (
@@ -20,6 +21,46 @@ class APIError(Exception):
             errors,
             retry_after,
         )
+        self.response = response
+
+
+class NukstaRequiredError(APIError):
+    """Sending requires an ITD NUKSTA subscription."""
+
+
+class BlockedError(APIError):
+    """The server rejected the operation because of a block."""
+
+
+class MessagesClosedError(APIError):
+    """The recipient's messages are closed."""
+
+
+_ERROR_TYPES: dict[str, type[APIError]] = {
+    "nuksta_required": NukstaRequiredError,
+    "blocked": BlockedError,
+    "messages_closed": MessagesClosedError,
+}
+
+
+def _api_error(
+    status: int,
+    message: str,
+    *,
+    code: str | None = None,
+    errors: Any = None,
+    retry_after: str | None = None,
+    response: Any = None,
+) -> APIError:
+    error_type = _ERROR_TYPES.get(code, APIError) if isinstance(code, str) else APIError
+    return error_type(
+        status,
+        message,
+        code=code,
+        errors=errors,
+        retry_after=retry_after,
+        response=response,
+    )
 
 
 class RateLimitError(APIError):
