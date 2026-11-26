@@ -52,7 +52,7 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 | `send_formatted_to_user(user_id, content, **kwargs)` | Отправить `Text` пользователю |
 | `edit_message(chat_id, message_id, text, attachments=None, entities=None)` | Изменить |
 | `delete_messages(chat_id, message_ids, for_everyone=False)` | Удалить |
-| `forward_messages(chat_id, source_chat_id, message_ids, client_message_ids=None)` | Переслать |
+| `forward_messages(chat_id, source_chat_id, message_ids, client_message_ids=None)` | Переслать; `client_message_ids` — `list[str]`, `dict[str, str]` или `None`, см. [руководство](USAGE.md#сообщения) |
 | `mark_read(chat_id, message_id)` | Прочитано до сообщения включительно |
 | `mark_voice_heard(chat_id, message_id)`, `get_heard_messages(chat_id, message_ids)` | Прослушивание голосовых |
 

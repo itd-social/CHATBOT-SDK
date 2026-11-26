@@ -841,9 +841,19 @@ class Bot:
         source_chat_id: str,
         message_ids: list[str],
         *,
-        client_message_ids: list[str] | None = None,
+        client_message_ids: list[str] | dict[str, str] | None = None,
     ) -> Any:
-        body = {"source_chat_id": source_chat_id, "message_ids": message_ids}
+        """Forward messages with optional caller-supplied client IDs.
+
+        Accept a legacy list or a mapping from source message IDs to client IDs.
+        Non-empty values are sent unchanged; None and empty containers are omitted.
+        Server acceptance of either form has not been verified on live ITD.
+        These IDs do not guarantee idempotency; network failures are not retried.
+        """
+        body: dict[str, Any] = {
+            "source_chat_id": source_chat_id,
+            "message_ids": message_ids,
+        }
         if client_message_ids:
             body["client_message_ids"] = client_message_ids
         return self.request(
