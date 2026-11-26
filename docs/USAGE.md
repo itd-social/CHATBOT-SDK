@@ -67,7 +67,7 @@ router.run_polling(state_path=".bot-state.json")
 
 Для реакций, правок и удалений есть `@router.reaction()`, `@router.edited()` и `@router.deleted()`. В контексте у них `chat_id`, `message_id`, `reactions` и `event`; при массовом удалении ID лежат в `ctx.event["message_ids"]`.
 
-> **Хорошо знать.** Команды живут только внутри SDK, на сервере ИТД они нигде не регистрируются. Старые `@router.on_message` (с аргументами `(event, message)`) и `on_event` тоже работают, но `on_message` нельзя использовать вместе с `message()`. `on_message` выдаёт `DeprecationWarning`, замена ему `message()`; удаление запланировано в 2.0.
+> **Хорошо знать.** Команды живут только внутри SDK, на сервере ИТД они нигде не регистрируются. Старые `@router.on_message` (с аргументами `(event, message)`) и `on_event` тоже работают, но `on_message` нельзя использовать вместе с `message()`. `on_message` выдаёт `DeprecationWarning`, замена ему `message()`; в 1.x метод не удаляется. Общая [политика совместимости и устаревания](../README.md#статус-и-гарантии) описана в README.
 
 Готовый пример: [`examples/commands.py`](../examples/commands.py).
 
