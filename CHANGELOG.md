@@ -4,6 +4,24 @@
 
 <!-- version list -->
 
+## [1.3.1](https://github.com/itd-social/CHATBOT-SDK/compare/v1.3.0...v1.3.1) (2026-11-26)
+
+### 🐛 Исправления
+
+* **messages:** Исправлена форма клиентских ID при пересылке ([#45](https://github.com/itd-social/CHATBOT-SDK/pull/45), [48220a8](https://github.com/itd-social/CHATBOT-SDK/commit/48220a8498c6d5b1bc2bd332893e5705b1bfb4ce))
+* **messages:** Преобразованы списки ID пересылки в объект ([#45](https://github.com/itd-social/CHATBOT-SDK/pull/45), [48220a8](https://github.com/itd-social/CHATBOT-SDK/commit/48220a8498c6d5b1bc2bd332893e5705b1bfb4ce))
+* **messages:** Разрешён словарь клиентских ID при пересылке ([#45](https://github.com/itd-social/CHATBOT-SDK/pull/45), [48220a8](https://github.com/itd-social/CHATBOT-SDK/commit/48220a8498c6d5b1bc2bd332893e5705b1bfb4ce))
+
+### 📚 Документация
+
+* **polling:** Исправлено описание долгих обработчиков ([#43](https://github.com/itd-social/CHATBOT-SDK/pull/43), [fbb333d](https://github.com/itd-social/CHATBOT-SDK/commit/fbb333d1367ff9ba79cb99e367965dab3d3159fc))
+* **messenger:** Описаны подписка, ошибки и ограничения ([#44](https://github.com/itd-social/CHATBOT-SDK/pull/44), [b434448](https://github.com/itd-social/CHATBOT-SDK/commit/b43444860b7c65d7f1e4feefa90f87ec3bc7f1d7))
+
+### 🛠 Прочее
+
+* **project:** Указаны Beta и политика совместимости ([#46](https://github.com/itd-social/CHATBOT-SDK/pull/46), [5e07e74](https://github.com/itd-social/CHATBOT-SDK/commit/5e07e747bcd0e2483af276b06218099e0fb4b309))
+
+
 ## [1.3.0](https://github.com/itd-social/CHATBOT-SDK/compare/v1.2.0...v1.3.0) (2026-11-26)
 
 ### ✨ Новые возможности
