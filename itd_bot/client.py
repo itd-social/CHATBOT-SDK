@@ -845,15 +845,21 @@ class Bot:
     ) -> Any:
         """Forward messages with optional caller-supplied client IDs.
 
-        Accept a legacy list or a mapping from source message IDs to client IDs.
-        Non-empty values are sent unchanged; None and empty containers are omitted.
-        Server acceptance of either form has not been verified on live ITD.
-        These IDs do not guarantee idempotency; network failures are not retried.
+        Accept a mapping from source message IDs to client IDs, or a legacy list
+        in message_ids order. Lists of matching length are converted to mappings.
+        Mismatched lists are passed through for server validation, as before.
+        None and empty containers are omitted. A live check accepted a mapping
+        and rejected a raw list; these IDs still do not guarantee idempotency.
+        Network failures are not retried.
         """
         body: dict[str, Any] = {
             "source_chat_id": source_chat_id,
             "message_ids": message_ids,
         }
+        if isinstance(client_message_ids, list) and len(client_message_ids) == len(
+            message_ids
+        ):
+            client_message_ids = dict(zip(message_ids, client_message_ids, strict=True))
         if client_message_ids:
             body["client_message_ids"] = client_message_ids
         return self.request(

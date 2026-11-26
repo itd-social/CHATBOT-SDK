@@ -20,7 +20,7 @@ def client_ids(request):
     return deepcopy(request.param)
 
 
-def test_forward_preserves_client_ids_and_raw_response(client_ids):
+def test_forward_maps_legacy_ids_and_preserves_raw_response(client_ids):
     response = {"messages": [{"message_id": "forwarded-1", "unknown": True}]}
     transport = Transport(httpx.Response(200, json=response))
     original = deepcopy(client_ids)
@@ -37,7 +37,7 @@ def test_forward_preserves_client_ids_and_raw_response(client_ids):
     assert sent_json(request) == {
         "source_chat_id": "source",
         "message_ids": ["msg-1", "msg-2"],
-        "client_message_ids": original,
+        "client_message_ids": {"msg-1": "client-1", "msg-2": "client-2"},
     }
     assert client_ids == original and message_ids == ["msg-1", "msg-2"]
 
@@ -58,7 +58,7 @@ def test_forward_empty_mapping_is_omitted():
 
 
 @pytest.mark.parametrize("status", [401, 403, 429, 500, 502, 503, 504])
-def test_forward_http_failure_does_not_retry_or_change_format(client_ids, status):
+def test_forward_http_failure_does_not_retry(client_ids, status):
     transport = Transport(
         httpx.Response(status, json={"error": {"code": "FORWARD_FAILED"}})
     )
@@ -70,13 +70,14 @@ def test_forward_http_failure_does_not_retry_or_change_format(client_ids, status
             )
     assert caught.value.status == status and caught.value.code == "FORWARD_FAILED"
     (request,) = transport.requests
-    assert sent_json(request)["client_message_ids"] == client_ids
+    assert sent_json(request)["client_message_ids"] == {
+        "msg-1": "client-1",
+        "msg-2": "client-2",
+    }
 
 
 @pytest.mark.parametrize("error_type", [httpx.ConnectError, httpx.ReadTimeout])
-def test_forward_network_failure_does_not_retry_or_change_format(
-    client_ids, error_type
-):
+def test_forward_network_failure_does_not_retry(client_ids, error_type):
     failure = error_type("fictional network failure")
     transport = Transport(failure)
     with transport.client() as client:
@@ -87,7 +88,10 @@ def test_forward_network_failure_does_not_retry_or_change_format(
             )
     assert caught.value is failure
     (request,) = transport.requests
-    assert sent_json(request)["client_message_ids"] == client_ids
+    assert sent_json(request)["client_message_ids"] == {
+        "msg-1": "client-1",
+        "msg-2": "client-2",
+    }
 
 
 def test_forward_invalid_response_does_not_retry(client_ids):
@@ -99,3 +103,19 @@ def test_forward_invalid_response_does_not_retry(client_ids):
                 "target", "source", ["msg-1", "msg-2"], client_message_ids=client_ids
             )
     assert len(transport.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "client_ids", [["client-1"], ["client-1", "client-2", "client-3"]]
+)
+def test_forward_mismatched_list_keeps_server_validation(client_ids):
+    transport = Transport(httpx.Response(400, json={"error": {"code": "BAD_REQUEST"}}))
+    with transport.client() as client:
+        bot = Bot("fictional-token", base_url=BASE, client=client)
+        with pytest.raises(APIError) as caught:
+            bot.forward_messages(
+                "target", "source", ["msg-1", "msg-2"], client_message_ids=client_ids
+            )
+    assert caught.value.status == 400 and caught.value.code == "BAD_REQUEST"
+    (request,) = transport.requests
+    assert sent_json(request)["client_message_ids"] == client_ids

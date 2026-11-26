@@ -297,7 +297,7 @@ CASES = [
         {
             "source_chat_id": "chat-1",
             "message_ids": ["msg-1", "msg-2"],
-            "client_message_ids": ["c-1", "c-2"],
+            "client_message_ids": {"msg-1": "c-1", "msg-2": "c-2"},
         },
     ),
     (
