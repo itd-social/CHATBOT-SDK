@@ -31,6 +31,14 @@ from .polling import (
 )
 from .post import Post
 from .rate_limits import RateLimiter, default_limiter
+from .schemas import (
+    FileLinksResponse,
+    ReactionsResponse,
+    SendResponse,
+    UpdateEvent,
+    UpdatesResponse,
+    UploadFinalizeResponse,
+)
 from .user import User
 
 _log = logging.getLogger(__name__)
@@ -399,7 +407,7 @@ class Bot:
         mime: str | None = None,
         metadata: Mapping[str, Any] | None = None,
         on_progress: Callable[[int, int], None] | None = None,
-    ) -> dict:
+    ) -> UploadFinalizeResponse:
         """Upload bytes or a local file using the messenger's multipart-by-chunk protocol."""
         import io
 
@@ -459,7 +467,7 @@ class Bot:
                 or not result["fileId"]
             ):
                 raise ProtocolError("Invalid upload finalization response")
-            return result
+            return cast(UploadFinalizeResponse, result)
         finally:
             stream.close()
 
@@ -475,7 +483,7 @@ class Bot:
         client_message_id: str | None = None,
         metadata: Mapping[str, Any] | None = None,
         on_progress: Callable[[int, int], None] | None = None,
-    ) -> dict:
+    ) -> SendResponse:
         uploaded = self.upload_file(
             source,
             filename=filename,
@@ -502,7 +510,7 @@ class Bot:
         mime: str | None = None,
         metadata: Mapping[str, Any] | None = None,
         **kwargs: Any,
-    ) -> dict:
+    ) -> SendResponse:
         """Send an image, optionally preparing a JPEG like the web client."""
         if compress:
             from .media import prepare_photo
@@ -542,7 +550,7 @@ class Bot:
         caption: str = "",
         compress: bool = False,
         **kwargs: Any,
-    ) -> dict:
+    ) -> SendResponse:
         """Send a video; optional compression requires the ffmpeg executable."""
         if not compress:
             return self.send_file(chat_id, source, text=caption, **kwargs)
@@ -610,7 +618,7 @@ class Bot:
         *,
         caption: str = "",
         **kwargs: Any,
-    ) -> dict:
+    ) -> SendResponse:
         """Send an audio file without transcoding."""
         return self.send_file(chat_id, source, text=caption, **kwargs)
 
@@ -621,7 +629,7 @@ class Bot:
         *,
         caption: str = "",
         **kwargs: Any,
-    ) -> dict:
+    ) -> SendResponse:
         return self.send_music(chat_id, source, caption=caption, **kwargs)
 
     def get_user(self, user_id_or_username: str) -> User:
@@ -753,7 +761,7 @@ class Bot:
         attachments: list | None = None,
         entities: list | None = None,
         client_message_id: str | None = None,
-    ) -> dict:
+    ) -> SendResponse:
         body = _send_body(
             {"text": text, "reply_to_id": reply_to_id},
             attachments,
@@ -770,17 +778,27 @@ class Bot:
         attachments: list | None = None,
         entities: list | None = None,
         client_message_id: str | None = None,
-    ) -> dict:
+    ) -> SendResponse:
         body = _send_body({"text": text}, attachments, entities, client_message_id)
         return self.request("POST", f"/users/{_id(user_id)}/messages", json=body)
 
-    def send_formatted(self, chat_id: str, content: Any, **kwargs: Any) -> dict:
+    def send_formatted(self, chat_id: str, content: Any, **kwargs: Any) -> SendResponse:
         from .formatting import Text
 
         if not isinstance(content, Text):
             raise TypeError("content must be a Text builder")
         text, entities = content.build()
         return self.send_message(chat_id, text, entities=entities, **kwargs)
+
+    def send_formatted_to_user(
+        self, user_id: str, content: Any, **kwargs: Any
+    ) -> SendResponse:
+        from .formatting import Text
+
+        if not isinstance(content, Text):
+            raise TypeError("content must be a Text builder")
+        text, entities = content.build()
+        return self.send_message_to_user(user_id, text, entities=entities, **kwargs)
 
     def edit_message(
         self,
@@ -909,7 +927,7 @@ class Bot:
     def get_reaction_catalog(self) -> Any:
         return self.request("GET", "/reactions/available")
 
-    def get_reactions(self, chat_id: str, message_id: str) -> Any:
+    def get_reactions(self, chat_id: str, message_id: str) -> ReactionsResponse:
         return self.request(
             "GET", f"/chats/{_id(chat_id)}/messages/{_id(message_id)}/reactions"
         )
@@ -1011,7 +1029,7 @@ class Bot:
             },
         )
 
-    def get_file_links(self, chat_id: str, file_ids: list[str]) -> Any:
+    def get_file_links(self, chat_id: str, file_ids: list[str]) -> FileLinksResponse:
         return self.request(
             "POST", f"/chats/{_id(chat_id)}/file-links", json={"file_ids": file_ids}
         )
@@ -1127,7 +1145,7 @@ class Bot:
                 raise
         return target
 
-    def get_updates(self, since: int, *, limit: int | None = None) -> dict:
+    def get_updates(self, since: int, *, limit: int | None = None) -> UpdatesResponse:
         if isinstance(since, bool) or not isinstance(since, int) or since < 0:
             raise ValueError("since must be a non-negative integer")
         params = {"since": since, "capabilities": "chat_settings", "manual_unread": 1}
@@ -1151,7 +1169,7 @@ class Bot:
             raise ResetRequired(data)
         if data["next_event_seq"] < since:
             raise ProtocolError("Updates cursor moved backwards without a reset")
-        return data
+        return cast(UpdatesResponse, data)
 
     def websocket_events(self, *, stop: threading.Event | None = None):
         """Yield live frames until disconnected; use get_updates to recover gaps.
@@ -1228,7 +1246,7 @@ class Bot:
     def poll(
         self,
         since: int,
-        handler: Callable[[dict], None],
+        handler: Callable[[UpdateEvent], None],
         *,
         interval: float = 2.0,
         on_checkpoint: Callable[[int], None] | None = None,
@@ -1237,7 +1255,7 @@ class Bot:
         min_fetch_interval: float = 0.2,
         retry_initial_delay: float = 1.0,
         retry_max_delay: float = 60.0,
-        on_error: Callable[[Exception, dict], ErrorAction | None] | None = None,
+        on_error: Callable[[Exception, UpdateEvent], ErrorAction | None] | None = None,
         handler_retries: int = 3,
         stop: threading.Event | None = None,
     ) -> None:
@@ -1423,8 +1441,8 @@ class _EventRunner:
 
     def __init__(
         self,
-        handler: Callable[[dict], None],
-        on_error: Callable[[Exception, dict], ErrorAction | None] | None,
+        handler: Callable[[UpdateEvent], None],
+        on_error: Callable[[Exception, UpdateEvent], ErrorAction | None] | None,
         retries: int,
         initial: float,
         maximum: float,
@@ -1433,7 +1451,7 @@ class _EventRunner:
         self._handler, self._on_error, self._retries = handler, on_error, retries
         self._initial, self._maximum, self._stop = initial, maximum, stop
 
-    def __call__(self, event: dict) -> None:
+    def __call__(self, event: UpdateEvent) -> None:
         attempt = 0
         while True:
             try:
@@ -1466,7 +1484,7 @@ class _EventRunner:
                 )
                 return
 
-    def _decide(self, exc: Exception, event: dict) -> ErrorAction | None:
+    def _decide(self, exc: Exception, event: UpdateEvent) -> ErrorAction | None:
         if self._on_error is None:
             return None
         action = self._on_error(exc, event)
@@ -1475,22 +1493,22 @@ class _EventRunner:
         return action
 
 
-def _event_type(event: dict) -> str:
+def _event_type(event: UpdateEvent) -> str:
     kind = event.get("type")
     return kind[:64] if isinstance(kind, str) else "?"
 
 
 def _run_by_chat(
     executor: ThreadPoolExecutor,
-    events: list[dict],
-    handler: Callable[[dict], None],
+    events: list[UpdateEvent],
+    handler: Callable[[UpdateEvent], None],
 ) -> None:
     """Run handlers in parallel across chats, in order within each chat.
 
     If one handler raises, handlers that already started finish, no new event
     starts, and the first error is raised.
     """
-    groups: dict[str | None, list[dict]] = {}
+    groups: dict[str | None, list[UpdateEvent]] = {}
     for event in events:
         chat_id = event.get("chat_id")
         key = chat_id if isinstance(chat_id, str) else None
@@ -1501,7 +1519,7 @@ def _run_by_chat(
         return
     failed = threading.Event()
 
-    def run(group: list[dict]) -> None:
+    def run(group: list[UpdateEvent]) -> None:
         for event in group:
             if failed.is_set():
                 return

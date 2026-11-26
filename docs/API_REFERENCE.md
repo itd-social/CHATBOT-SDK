@@ -49,6 +49,7 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 | `send_message(chat_id, text, reply_to_id=None, attachments=None, entities=None, client_message_id=None)` | Отправить |
 | `send_message_to_user(user_id, text, attachments=None, entities=None, client_message_id=None)` | Отправить пользователю |
 | `send_formatted(chat_id, content, **kwargs)` | Отправить `Text` |
+| `send_formatted_to_user(user_id, content, **kwargs)` | Отправить `Text` пользователю |
 | `edit_message(chat_id, message_id, text, attachments=None, entities=None)` | Изменить |
 | `delete_messages(chat_id, message_ids, for_everyone=False)` | Удалить |
 | `forward_messages(chat_id, source_chat_id, message_ids, client_message_ids=None)` | Переслать |
@@ -128,7 +129,7 @@ Dispatcher.from_bot(bot)
 | Что | Описание |
 |---|---|
 | `command(name)`, `message()`, `photo()`, `reaction()`, `edited()`, `deleted()` | Регистрация обработчиков с контекстом |
-| `on_message`, `on_event(type)` | Прежние обработчики |
+| `on_message` (устарел, используйте `message()`), `on_event(type)` | Прежние обработчики |
 | `on_error()` | Один хук `(exc, event) -> ErrorAction \| None`; уходит в `poll` |
 | `handle(event)` | Обработать одно событие |
 | `run_polling(since=None, state_path=None, handle_signals=True, **kwargs)` | Запустить цикл; `kwargs` уходят в `poll`. В главном потоке SIGINT и SIGTERM дают мягкую остановку, второй SIGINT поднимает `KeyboardInterrupt` |
@@ -159,6 +160,25 @@ python -m mypy itd_bot
 ```
 
 Методы по-прежнему возвращают обычный JSON ИТД. Аннотации описывают то, что SDK передаёт и принимает, но не гарантируют формат ответов сервера.
+
+## Типы
+
+Описания JSON лежат в `itd_bot.schemas` и экспортируются из `itd_bot`: `UpdateEvent`, `MessagePayload`, `AttachmentPayload`, `UpdatesResponse`, `ReactionsResponse`, `ReactionEntry`, `ReactionValue`, `SendResponse`, `FileLinksResponse`, `FileLink`, `UploadInitResponse`, `UploadFinalizeResponse`.
+
+```python
+from itd_bot import MessageContext, UpdatesResponse
+
+def first_type(batch: UpdatesResponse) -> str | None:
+    events = batch.get("events", [])
+    return events[0].get("type") if events else None
+
+def sender(ctx: MessageContext) -> str | None:
+    return ctx.message.get("sender_id")
+```
+
+- Это `TypedDict` с `total=False`: ни один ключ не обещан. Они нужны только для подсказок, ничего не проверяют, а методы по-прежнему возвращают обычные `dict`.
+- Поля взяты из клиентского бандла, кода SDK и тестов. Это не спецификация сервера, на живом ИТД не проверялось. Где форма неизвестна (например, `reactions` в событии), стоит `Any`.
+- Обработчик, у которого событие аннотировано как `dict`, mypy теперь отклонит. Аннотируйте его `UpdateEvent`.
 
 ## Лимиты
 

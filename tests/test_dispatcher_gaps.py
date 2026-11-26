@@ -177,7 +177,8 @@ def test_message_and_photo_handlers_are_exclusive():
 
 def test_message_refuses_to_replace_a_legacy_handler():
     dispatcher = make()
-    dispatcher.on_message(lambda event, message: None)
+    with pytest.warns(DeprecationWarning, match=r"message\(\)"):
+        dispatcher.on_message(lambda event, message: None)
     with pytest.raises(ValueError, match="message handler already registered"):
         dispatcher.message()(lambda context: None)
 

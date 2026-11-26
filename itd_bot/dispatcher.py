@@ -7,17 +7,19 @@ import re
 import tempfile
 import threading
 import time
+import warnings
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .client import Bot
 from .context import EventContext, MessageContext
 from .errors import ProtocolError, RateLimitError
 from .polling import ErrorAction, is_transient, mark_redeliver, stop_on_signals
+from .schemas import MessagePayload, UpdateEvent
 
 _COMMAND = re.compile(r"^/([A-Za-z0-9_]{1,32})(?:@([A-Za-z0-9_]{1,64}))?(?=\s|$)")
 _READ_MODES = frozenset({"background", "blocking", "off"})
@@ -67,10 +69,10 @@ class Dispatcher:
         self.typing_delay, self.read_mode = typing_delay, read_mode
         self.username = username.removeprefix("@").lower() if username else None
         self._commands: dict[str, Callable[[CommandContext], Any]] = {}
-        self._fallback: Callable[[dict[str, Any], dict[str, Any]], Any] | None = None
+        self._fallback: Callable[[UpdateEvent, MessagePayload], Any] | None = None
         self._message_handler: Callable[[MessageContext], Any] | None = None
         self._photo_handler: Callable[[MessageContext], Any] | None = None
-        self._event_handlers: dict[str, Callable[[dict[str, Any]], Any]] = {}
+        self._event_handlers: dict[str, Callable[[UpdateEvent], Any]] = {}
         self._error_handler: Callable[..., ErrorAction | None] | None = None
         self._typing_lock = threading.Lock()
         self._typing_last: dict[str, float] = {}
@@ -181,7 +183,7 @@ class Dispatcher:
         if not event_type or event_type in {"new_message", "new_messages"}:
             raise ValueError("use command/on_message for incoming messages")
 
-        def register(handler: Callable[[dict[str, Any]], Any]) -> Callable:
+        def register(handler: Callable[[UpdateEvent], Any]) -> Callable:
             if event_type in self._event_handlers:
                 raise ValueError("event handler already registered")
             self._event_handlers[event_type] = handler
@@ -191,8 +193,7 @@ class Dispatcher:
 
     def on_error(
         self,
-        handler: Callable[[Exception, dict[str, Any]], ErrorAction | None]
-        | None = None,
+        handler: Callable[[Exception, UpdateEvent], ErrorAction | None] | None = None,
     ) -> Callable:
         """Register the one hook that decides what polling does after a handler fails.
 
@@ -224,10 +225,16 @@ class Dispatcher:
         return register
 
     def on_message(
-        self, handler: Callable[[dict[str, Any], dict[str, Any]], Any]
+        self, handler: Callable[[UpdateEvent, MessagePayload], Any]
     ) -> Callable:
         if self._message_handler is not None:
             raise ValueError("message handler already registered")
+        warnings.warn(
+            "Dispatcher.on_message(event, message) is deprecated and will be "
+            "removed in 2.0; use Dispatcher.message() with a MessageContext",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._fallback = handler
         return handler
 
@@ -254,7 +261,7 @@ class Dispatcher:
             if any(name in self._event_handlers for name in event_types):
                 raise ValueError("event handler already registered")
 
-            def wrapped(event: dict[str, Any]) -> Any:
+            def wrapped(event: UpdateEvent) -> Any:
                 return handler(EventContext(self.bot, event))
 
             for name in event_types:
@@ -272,8 +279,9 @@ class Dispatcher:
     def deleted(self) -> Callable:
         return self._event_decorator("message_deleted", "messages_deleted")
 
-    def handle(self, event: dict[str, Any]) -> None:
+    def handle(self, event: UpdateEvent) -> None:
         typ: Any = event.get("type")
+        messages: Any
         if typ == "new_message":
             messages = [event.get("message")]
         elif typ == "new_messages":
@@ -295,6 +303,7 @@ class Dispatcher:
                 message.get("sender_id"), str
             ):
                 raise ValueError("invalid message")
+            payload = cast(MessagePayload, message)
             if message["sender_id"] == self.self_user_id:
                 continue
             message_id = message.get("message_id")
@@ -316,13 +325,13 @@ class Dispatcher:
                             CommandContext(
                                 self.bot,
                                 event,
-                                message,
+                                payload,
                                 name,
                                 text[match.end() :].strip(),
                             )
                         )
                     continue
-            context = MessageContext(self.bot, event, message)
+            context = MessageContext(self.bot, event, payload)
             if self._photo_handler and context.photo:
                 with self._typing(event["chat_id"]):
                     self._photo_handler(context)
@@ -331,7 +340,7 @@ class Dispatcher:
                     self._message_handler(context)
             elif self._fallback:
                 with self._typing(event["chat_id"]):
-                    self._fallback(event, message)
+                    self._fallback(event, payload)
 
     def run_polling(
         self,

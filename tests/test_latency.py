@@ -228,10 +228,11 @@ def test_background_read_does_not_block_and_coalesces():
     with httpx.Client(transport=httpx.MockTransport(transport)) as client:
         bot = Bot("token", base_url="https://example.test", client=client)
         with Dispatcher(bot, self_user_id="self", read_mode="background") as router:
+            with pytest.warns(DeprecationWarning, match=r"message\(\)"):
 
-            @router.on_message
-            def reply(event, message):
-                bot.send_message(event["chat_id"], "re:" + message["text"])
+                @router.on_message
+                def reply(event, message):
+                    bot.send_message(event["chat_id"], "re:" + message["text"])
 
             router.handle(
                 {
@@ -259,7 +260,8 @@ def test_read_mode_off_and_validation():
     with httpx.Client(transport=httpx.MockTransport(transport)) as client:
         bot = Bot("token", base_url="https://example.test", client=client)
         router = Dispatcher(bot, self_user_id="self", read_mode="off")
-        router.on_message(lambda event, message: None)
+        with pytest.warns(DeprecationWarning, match=r"message\(\)"):
+            router.on_message(lambda event, message: None)
         router.handle(message_event("c", "m"))
         router.close()
         assert calls == []
