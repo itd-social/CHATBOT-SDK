@@ -4,6 +4,31 @@
 
 <!-- version list -->
 
+## [1.3.0](https://github.com/itd-social/CHATBOT-SDK/compare/v1.2.0...v1.3.0) (2026-11-26)
+
+### ✨ Новые возможности
+
+* **polling:** Добавлены on_error, повторы при сбоях сети и мягкая остановка ([#13](https://github.com/itd-social/CHATBOT-SDK/pull/13), [4dd20a3](https://github.com/itd-social/CHATBOT-SDK/commit/4dd20a39eaaed5cf20137ddc5a647260781150c8))
+* **types:** Добавлены py.typed и проверка mypy в CI ([#15](https://github.com/itd-social/CHATBOT-SDK/pull/15), [1c5f53d](https://github.com/itd-social/CHATBOT-SDK/commit/1c5f53df231ad5cdf2a8d37982dcbccc6119c42a))
+* **types:** Добавлены описания ответов, send_formatted_to_user и предупреждение об устаревшем on_message ([#16](https://github.com/itd-social/CHATBOT-SDK/pull/16), [300c9fc](https://github.com/itd-social/CHATBOT-SDK/commit/300c9fcbb2755c55a9c8d39f689b8775292ae6a8))
+
+### 📚 Документация
+
+* **license:** switch to Apache License 2.0 ([#11](https://github.com/itd-social/CHATBOT-SDK/pull/11), [623e5ef](https://github.com/itd-social/CHATBOT-SDK/commit/623e5ef3a40a06835a0c8f1c37f3db634297942d))
+* **release:** Новое описание разделов ченжлога и соответствие типов коммитов ([#10](https://github.com/itd-social/CHATBOT-SDK/pull/10), [b5d9c3d](https://github.com/itd-social/CHATBOT-SDK/commit/b5d9c3de39e1e808111530228daeddfaf6128bf3))
+* **changelog:** Новый вид ченжлога ([#10](https://github.com/itd-social/CHATBOT-SDK/pull/10), [b5d9c3d](https://github.com/itd-social/CHATBOT-SDK/commit/b5d9c3de39e1e808111530228daeddfaf6128bf3))
+* Полностью переписана документация ([#12](https://github.com/itd-social/CHATBOT-SDK/pull/12), [365d282](https://github.com/itd-social/CHATBOT-SDK/commit/365d2821c9af7d148d86f2b5fb8fefe82e256f86))
+* Удалены комментарии в коде ([#10](https://github.com/itd-social/CHATBOT-SDK/pull/10), [b5d9c3d](https://github.com/itd-social/CHATBOT-SDK/commit/b5d9c3de39e1e808111530228daeddfaf6128bf3))
+
+### ✅ Тесты
+
+* Добавлены тесты на ветки ошибок и непокрытые методы ([#14](https://github.com/itd-social/CHATBOT-SDK/pull/14), [db204ab](https://github.com/itd-social/CHATBOT-SDK/commit/db204ab7fafbed4b8138facf3f33397bd20a98e3))
+
+### 📦 Сборка
+
+* **release:** Переработанный ченжлог с красивым оформлением ([#10](https://github.com/itd-social/CHATBOT-SDK/pull/10), [b5d9c3d](https://github.com/itd-social/CHATBOT-SDK/commit/b5d9c3de39e1e808111530228daeddfaf6128bf3))
+
+
 ## v1.2.0 (2026-11-24)
 
 ### Bug Fixes
