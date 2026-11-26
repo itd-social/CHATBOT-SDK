@@ -454,28 +454,27 @@ except APIError as error:
 ### Коды ошибок сервера
 
 ```python
-from itd_bot import APIError
+from itd_bot import BlockedError, MessagesClosedError, NukstaRequiredError
 
 try:
     bot.send_message("CHAT_ID", "Привет!")
-except APIError as error:
-    if error.code == "nuksta_required":
-        print("Проверьте подписку ИТД НУКСТА у аккаунта бота")
-    elif error.code in {"blocked", "messages_closed"}:
-        print("Отправка этому получателю недоступна")
-    else:
-        raise
+except NukstaRequiredError:
+    print("Проверьте подписку ИТД НУКСТА у аккаунта бота")
+except (BlockedError, MessagesClosedError):
+    print("Отправка этому получателю недоступна")
 ```
 
 | `error.code` | Что означает и как обработать |
 |---|---|
-| `nuksta_required` | Для отправки нужна подписка «ИТД НУКСТА» у аккаунта бота. Проверьте подписку; автоматический повтор причину не устранит |
-| `blocked` | Отправка запрещена из-за блокировки. Прекратите автоматические отправки этому получателю и разберите причину блокировки |
-| `messages_closed` | Сообщения получателя закрыты. Не повторяйте отправку без изменения доступности переписки |
+| `nuksta_required` | `NukstaRequiredError`: для отправки нужна подписка «ИТД НУКСТА» у аккаунта бота. Проверьте подписку; автоматический повтор причину не устранит |
+| `blocked` | `BlockedError`: отправка запрещена из-за блокировки. Прекратите автоматические отправки этому получателю и разберите причину блокировки |
+| `messages_closed` | `MessagesClosedError`: сообщения получателя закрыты. Не повторяйте отправку без изменения доступности переписки |
 | `RATE_LIMIT_EXCEEDED` | Превышен лимит: SDK выдаёт `RateLimitError` при HTTP 429 или локальной блокировке. Учитывайте `retry_after_seconds`; код сервера может отличаться |
 | `UPLOAD_QUOTA_EXCEEDED` | Бюджет загрузок исчерпан: при HTTP 429 SDK выдаёт `UploadQuotaError`. Не начинайте новые загрузки, пока не разобрались с незавершёнными, см. [лимит загрузок](RATE_LIMITS.md#лимит-загрузок) |
 
-Первые три кода описаны в [#42](https://github.com/itd-social/CHATBOT-SDK/issues/42); в этой работе они не проверялись на сервере. SDK передаёт код ответа в `APIError.code` без отдельного класса для каждого кода. Проверяйте `code`, не привязываясь к непроверенному HTTP-статусу; неизвестный код или `None` тоже допустимы.
+Три новых исключения наследуют `APIError`: прежний `except APIError` продолжает работать. У них сохранены `status`, `code`, `errors`, `retry_after`, а в `response` лежит весь разобранный JSON ответа, включая неизвестные поля. Для логов выбирайте код и статус, а не весь ответ. Неизвестный код или `None` по-прежнему дают обычный `APIError`. Ответ 429 сохраняет прежнюю обработку через `RateLimitError` или `UploadQuotaError`.
+
+Коды описаны в [#42](https://github.com/itd-social/CHATBOT-SDK/issues/42); их преобразование в исключения проверено на `MockTransport`, без вызова этих ошибок на живом сервере. Классы не привязаны к непроверенному HTTP-статусу и не включают повтор запроса. Пример: [`examples/api_errors.py`](../examples/api_errors.py).
 
 Области `ip_flood`, `global_flood`, `new_recipients_hour` и `new_recipients_day` читаются отдельно из заголовка `X-RateLimit-Scope` и доступны как `RateLimitError.scope`. Это не значения `error.code`, см. [обработку 429](RATE_LIMITS.md#если-пришёл-429).
 

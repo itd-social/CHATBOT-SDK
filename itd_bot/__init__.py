@@ -3,7 +3,14 @@ from .client import APIError, Bot, ProtocolError, ResetRequired
 from .context import Attachment, EventContext, MessageContext, SentMessage
 from .dedup import DedupStore, MemoryDedupStore
 from .dispatcher import CommandContext, Dispatcher
-from .errors import RateLimitError, SessionStorageError, UploadQuotaError
+from .errors import (
+    BlockedError,
+    MessagesClosedError,
+    NukstaRequiredError,
+    RateLimitError,
+    SessionStorageError,
+    UploadQuotaError,
+)
 from .formatting import Text, utf16_length
 from .polling import ErrorAction
 from .post import Post
@@ -35,6 +42,9 @@ __all__ = [
     "MessageContext",
     "SentMessage",
     "APIError",
+    "NukstaRequiredError",
+    "BlockedError",
+    "MessagesClosedError",
     "RateLimitError",
     "UploadQuotaError",
     "RateLimitConfig",
