@@ -11,6 +11,7 @@ import pytest
 from tools.check_bundle import (
     compare,
     extract,
+    is_messenger_route,
     main,
     route_name,
     sdk_routes,
@@ -48,17 +49,17 @@ def test_routes_methods_templates_escapes_and_queries():
     data = extract(
         r"""api.get(`/chats/${escape(id)}/messages?token=private`);
 api.post('/chats/dm'); api.patch("\x2fchats/\u007b\u007d/mute");
-fetch('/api/widgets', {method: 'DELETE'}); fetch('/api/users');
-request('PUT', '/api/settings');""",
+fetch('/api/v1/messenger/widgets', {method: 'DELETE'}); fetch('/api/v1/messenger/status');
+request('PUT', '/api/v1/messenger/settings');""",
         "index-test.js",
     )
     assert {(d["name"], d["method"]) for d in data} == {
         ("/chats/{}/messages", "GET"),
         ("/chats/dm", "POST"),
         ("/chats/{}/mute", "PATCH"),
-        ("/api/widgets", "DELETE"),
-        ("/api/users", "GET"),
-        ("/api/settings", "PUT"),
+        ("/api/v1/messenger/widgets", "DELETE"),
+        ("/api/v1/messenger/status", "GET"),
+        ("/api/v1/messenger/settings", "PUT"),
     }
     assert "private" not in json.dumps(data)
 
@@ -85,20 +86,25 @@ def test_nested_template_expressions_and_escaped_backticks():
 
 def test_unresolved_paths_remain_hypotheses():
     data = extract(
-        'const endpoint="/api/future"; api.get(`/chats${query}`);', "index-test.js"
+        'const endpoint="/api/v1/messenger/future"; api.get(`/chats${query}`);',
+        "index-test.js",
     )
     assert all(d["confidence"] == "hypothesis" for d in data)
-    assert {d["name"] for d in data} == {"/api/future", "/chats{}"}
+    assert {d["name"] for d in data} == {"/api/v1/messenger/future", "/chats{}"}
 
 
 def test_fetch_options_only_consider_top_level_method_and_no_dynamic_spreads():
-    source = """fetch("/api/one", {headers: {method: "DELETE"}});
-fetch("/api/two", {method: operation});
-fetch("/api/three", {method: "POST", ...options});
-fetch("/api/four", options);"""
+    source = """fetch("/api/v1/messenger/one", {headers: {method: "DELETE"}});
+fetch("/api/v1/messenger/two", {method: operation});
+fetch("/api/v1/messenger/three", {method: "POST", ...options});
+fetch("/api/v1/messenger/four", options);"""
     data = {item["name"]: item for item in extract(source, "index-test.js")}
-    assert data["/api/one"]["method"] == "GET"
-    for path in ["/api/two", "/api/three", "/api/four"]:
+    assert data["/api/v1/messenger/one"]["method"] == "GET"
+    for path in [
+        "/api/v1/messenger/two",
+        "/api/v1/messenger/three",
+        "/api/v1/messenger/four",
+    ]:
         assert data[path]["method"] is None
         assert data[path]["confidence"] == "hypothesis"
 
@@ -170,19 +176,20 @@ def test_sdk_static_analysis_handles_scope_variants_and_does_not_execute(sources
     routes = sdk_routes(sdk)
     assert routes["POST /chats/{}/delete-for-all"] == {"Bot.send"}
     assert routes["POST /chats/{}/delete-for-me"] == {"Bot.send"}
-    assert routes["GET /users/me"] == {"profile.user"}
+    assert "GET /users/me" not in routes
+    assert "GET /api/users/me" not in routes
 
 
 def test_compare_detects_routes_events_http_method_and_sdk_changes(sources):
     bundle, sdk = sources
     before = snapshot(bundle, sdk)
     (bundle / "index-test.js").write_text(
-        'api.post("/chats"); api.get("/api/future"); switch(e.type){case "new_message": break; case "future_event": break;}',
+        'api.post("/chats"); api.get("/api/v1/messenger/future"); switch(e.type){case "new_message": break; case "future_event": break;}',
         encoding="utf-8",
     )
     changes = compare(before, snapshot(bundle, sdk))
     assert changes == {
-        "new": ["event future_event", "route /api/future"],
+        "new": ["event future_event", "route /api/v1/messenger/future"],
         "disappeared": ["event typing"],
         "changed": ["route /chats"],
     }
@@ -239,7 +246,9 @@ def test_cli_exit_codes_snapshot_and_no_secret_errors(sources, tmp_path, capsys)
     assert target.is_file()
     assert main([*args, "--snapshot", str(target)]) == 2
     assert "private" not in capsys.readouterr().err
-    (bundle / "index-test.js").write_text('api.get("/api/new");', encoding="utf-8")
+    (bundle / "index-test.js").write_text(
+        'api.get("/api/v1/messenger/new");', encoding="utf-8"
+    )
     assert main(args) == 1
     assert "Новое:" in capsys.readouterr().out
     inventory.write_text("invalid private source", encoding="utf-8")
@@ -300,3 +309,120 @@ def test_repository_inventory_is_valid_and_records_inactive_features():
     )
     assert sticker["confidence"] == "prepared_inactive"
     assert sticker["issue"] == 17
+    assert data["scope"] == "messenger"
+    assert all(
+        is_messenger_route(entry["name"])
+        for entry in data["entries"]
+        if entry["kind"] == "route"
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/profile-avatar",
+        "/red-pens/cancel",
+        "/red-pens/inventory",
+        "/red-pens/report",
+        "/red-pens/state",
+        "/correctors/cancel",
+        "/event-nicknames",
+        "/files/banner-drawing",
+        "/v1/aliceai/balance",
+        "/v1/aliceai/inventory",
+        "/v1/aliceai/nicknames",
+        "/v1/aliceai/nicknames/active",
+        "/v1/aliceai/profiles/{}",
+        "/v1/aliceai/profiles/{}/balloons",
+        "/v1/aliceai/profiles/{}/curtains",
+        "/v1/aliceai/profiles/{}/curtains/donations",
+        "/v1/aliceai/profiles/{}/cushion",
+        "/v1/aliceai/profiles/{}/cushion/claim",
+        "/v1/aliceai/profiles/{}/placements",
+        "/v1/aliceai/profiles/{}/placements/{}/erase",
+        "/v1/aliceai/profiles/{}/window/break",
+        "/v1/aliceai/shop",
+        "/v1/aliceai/waste-paper/posts/{}",
+        "/v1/halloween",
+        "/v1/event-assets",
+        "/api/v1/auth/phone/resume",
+        "/api/v1/auth/phone/reverse",
+        "/api/v1/auth/terms-acceptance",
+        "/api/v1/event-assets",
+        "/api/legal-documents",
+        "/api/legal-documents/social/{}",
+        "/api/legal-documents/social/{}/versions",
+        "/api/legal-documents/social/{}/versions/{}",
+        "/phone/change",
+        "/email/change",
+        "/change/confirm",
+        "/resend-otp",
+        "/methods",
+        "/messenger/entry",
+        "/users",
+        "/users/profile",
+        "/api/users/me",
+        "/api/posts/{}",
+        "/v1/portal",
+        "/v1/subscription/pay",
+        "/v1/auth/sessions",
+        "/api/v1/messenger-extra/chats",
+        "/chats-archive",
+        "/presence-settings",
+        "/reactions-shop",
+        "/media/upload-avatar",
+        "/api/v1/messenger/../profile-avatar",
+    ],
+)
+def test_non_messenger_apis_never_enter_findings(path):
+    assert not is_messenger_route(path)
+    source = f'api.get("{path}"); fetch("{path}", {{method: "POST"}});'
+    assert extract(source, "index-test.js") == []
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/messenger",
+        "/api/v1/messenger/future",
+        "/api/v1/messenger/ws",
+        "/chats",
+        "/chats/{}/future",
+        "/presence",
+        "/presence/{}",
+        "/reactions/available",
+        "/media/upload/init",
+        "/media/upload/{}/part/{}",
+        "/v1/chat-files/{}",
+        "/browser-file-session",
+        "/users/{}/messages",
+    ],
+)
+def test_messenger_namespaces_keep_current_and_new_endpoints(path):
+    assert is_messenger_route(path)
+    found = extract(f'api.get("{path}");', "index-test.js")
+    assert [(item["name"], item["method"]) for item in found] == [(path, "GET")]
+
+
+def test_external_api_changes_and_old_broad_inventory_do_not_report_drift(sources):
+    bundle, sdk = sources
+    before = snapshot(bundle, sdk)
+    unrelated = bundle / "index-social.js"
+    unrelated.write_text(
+        'api.get("/red-pens/state"); fetch("/api/legal-documents");', encoding="utf-8"
+    )
+    assert not any(compare(before, snapshot(bundle, sdk)).values())
+    unrelated.write_text('api.post("/v1/aliceai/new-feature");', encoding="utf-8")
+    assert not any(compare(before, snapshot(bundle, sdk)).values())
+    legacy = copy.deepcopy(before)
+    legacy["entries"].append(
+        {
+            "kind": "route",
+            "name": "/profile-avatar",
+            "confidence": "confirmed",
+            "methods": ["DELETE", "GET"],
+            "sdk_methods": [],
+            "evidence": [],
+        }
+    )
+    assert not any(compare(legacy, snapshot(bundle, sdk)).values())

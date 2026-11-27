@@ -13,6 +13,12 @@ python tools/check_bundle.py "C:\path\to\bundle" --json --snapshot .venv/bundle-
 
 В обязательном CI нет запуска по настоящему бандлу. CI проверяет синтаксис скрипта и тесты на вымышленных JS-фрагментах. Исходники бандла, сессии и сырые диагностические выгрузки в репозиторий не добавляйте.
 
+## Область проверки
+
+Опись и сравнение ограничены API мессенджера: чаты и сообщения, реакции, присутствие, файлы чата и события. Авторизация аккаунта, редактирование профиля, платежи, юридические страницы, игры и прочие разделы сайта исключены, даже если они находятся в том же index-файле.
+
+Фильтр принимает `/api/v1/messenger` и его подпути, относительные семейства `/chats`, `/presence`, `/reactions`, `/media/upload`, путь `/browser-file-session`, отправку `/users/{}/messages` и скачивание `/v1/chat-files`. Для частично динамического списка чатов сохраняется гипотеза `/chats{}…`. Новые HTTP-пути внутри этих пространств попадают в проверку автоматически. Новое отдельное пространство имён нужно подтвердить и добавить в `is_messenger_route()`; произвольные API сайта автоматически не включаются.
+
 ## Что сравнивается
 
 «Новое» и «исчезнувшее» — изменился набор имён маршрутов или событий. «Изменившееся» — поменялись видимые HTTP-методы, соответствия методам SDK или автоматически определённая уверенность. Хеши и смещения помогают найти источник; их смена сама по себе не означает изменение API.
@@ -39,29 +45,14 @@ python tools/check_bundle.py "C:\path\to\bundle" --json --snapshot .venv/bundle-
 
 Нужны все три семейства. Остальные JS-файлы не анализируются. Точные относительные имена, хеши и смещения в символах Unicode от начала файла записаны в JSON. Номера строк из Issues относятся к другой раскладке бандла.
 
-Автоматическая опись: **106 маршрутов-кандидатов**, **14 типов событий**. В таблицах «—» означает отсутствие прямого статического соответствия, а не доказанное отсутствие поддержки.
+Автоматическая опись: маршрутов-кандидатов — **31**, типов событий — **14**. В таблицах «—» означает отсутствие прямого статического соответствия, а не доказанное отсутствие поддержки.
 
 ## Маршруты
 
 | Путь клиента | Видимые методы | Прямое соответствие SDK | Уверенность |
 |---|---|---|---|
-| `/api/legal-documents` | — | — | Гипотеза |
-| `/api/legal-documents/social/{}` | — | — | Гипотеза |
-| `/api/legal-documents/social/{}/versions` | — | — | Гипотеза |
-| `/api/legal-documents/social/{}/versions/{}` | — | — | Гипотеза |
-| `/api/v1/auth` | — | — | Гипотеза |
-| `/api/v1/auth/phone/config` | GET | — | Вызов/ветка в клиенте |
-| `/api/v1/auth/phone/resume` | — | — | Гипотеза |
-| `/api/v1/auth/phone/reverse` | — | — | Гипотеза |
-| `/api/v1/auth/terms-acceptance` | — | — | Гипотеза |
-| `/api/v1/event-assets` | — | — | Гипотеза |
 | `/api/v1/messenger` | — | — | Гипотеза |
 | `/api/v1/messenger/browser-file-session` | — | — | Гипотеза |
-| `/change/confirm` | POST | — | Вызов/ветка в клиенте |
-| `/change/pending` | GET | — | Вызов/ветка в клиенте |
-| `/change/pending/{}` | DELETE | — | Вызов/ветка в клиенте |
-| `/change/proof` | POST | — | Вызов/ветка в клиенте |
-| `/change/wait` | POST | — | Вызов/ветка в клиенте |
 | `/chats/dm` | POST | `Bot.create_direct_chat` | Вызов/ветка в клиенте |
 | `/chats/unread` | GET | `Bot.get_unread_count` | Вызов/ветка в клиенте |
 | `/chats/{}` | GET | `Bot.get_chat` | Вызов/ветка в клиенте |
@@ -85,72 +76,12 @@ python tools/check_bundle.py "C:\path\to\bundle" --json --snapshot .venv/bundle-
 | `/chats/{}/read` | POST | `Bot.mark_read` | Вызов/ветка в клиенте |
 | `/chats/{}/unread` | PATCH | `Bot.mark_unread` | Вызов/ветка в клиенте |
 | `/chats{}{}manual_unread=1` | GET | — | Гипотеза |
-| `/correctors/cancel` | POST | — | Вызов/ветка в клиенте |
-| `/correctors/inventory` | GET | — | Вызов/ветка в клиенте |
-| `/correctors/report` | POST | — | Вызов/ветка в клиенте |
-| `/correctors/state` | GET | — | Вызов/ветка в клиенте |
-| `/email/attach` | POST | — | Вызов/ветка в клиенте |
-| `/email/change` | POST | — | Вызов/ветка в клиенте |
-| `/event-nicknames` | GET | — | Вызов/ветка в клиенте |
-| `/files/banner-drawing` | POST | — | Вызов/ветка в клиенте |
 | `/media/upload/init` | POST | `Bot.upload_file` | Вызов/ветка в клиенте |
 | `/media/upload/{}/finalize` | POST | `Bot.upload_file` | Вызов/ветка в клиенте |
-| `/messenger/entry` | POST | — | Вызов/ветка в клиенте |
-| `/methods` | GET | — | Вызов/ветка в клиенте |
-| `/phone/change` | POST | — | Вызов/ветка в клиенте |
 | `/presence` | POST | `Bot.get_presence_many` | Вызов/ветка в клиенте |
 | `/presence/{}` | GET | `Bot.get_presence` | Вызов/ветка в клиенте |
-| `/profile-avatar` | DELETE, GET | — | Вызов/ветка в клиенте |
 | `/reactions/available` | GET | `Bot.get_reaction_catalog` | Вызов/ветка в клиенте |
-| `/red-pens/cancel` | POST | — | Вызов/ветка в клиенте |
-| `/red-pens/inventory` | GET | — | Вызов/ветка в клиенте |
-| `/red-pens/report` | POST | — | Вызов/ветка в клиенте |
-| `/red-pens/state` | GET | — | Вызов/ветка в клиенте |
-| `/resend-otp` | POST | — | Вызов/ветка в клиенте |
-| `/set-password` | POST | — | Вызов/ветка в клиенте |
-| `/updates` | GET | `Bot.get_updates` | Вызов/ветка в клиенте |
-| `/users` | GET | — | Вызов/ветка в клиенте |
-| `/users/check-username` | GET | — | Вызов/ветка в клиенте |
-| `/users/profile` | POST | — | Вызов/ветка в клиенте |
 | `/users/{}/messages` | POST | `Bot.send_message_to_user` | Вызов/ветка в клиенте |
-| `/v1/aliceai/balance` | GET | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/inventory` | GET | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/nicknames` | GET | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/nicknames/active` | PUT | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}` | GET | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}/balloons` | POST | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}/curtains` | PUT | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}/curtains/donations` | POST | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}/cushion` | POST | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}/cushion/claim` | POST | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}/placements` | POST | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}/placements/{}/erase` | POST | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/profiles/{}/window/break` | POST | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/shop` | GET | — | Вызов/ветка в клиенте |
-| `/v1/aliceai/waste-paper/posts/{}` | POST | — | Вызов/ветка в клиенте |
-| `/v1/auth/sessions` | — | — | Гипотеза |
-| `/v1/auth/sessions/{}` | — | — | Гипотеза |
-| `/v1/event-assets` | GET | — | Вызов/ветка в клиенте |
-| `/v1/event/status` | GET | — | Вызов/ветка в клиенте |
-| `/v1/halloween` | — | — | Гипотеза |
-| `/v1/i` | — | — | Гипотеза |
-| `/v1/portal` | GET | — | Вызов/ветка в клиенте |
-| `/v1/subscription` | — | — | Гипотеза |
-| `/v1/subscription/auto-renewal` | — | — | Гипотеза |
-| `/v1/subscription/bind-card` | — | — | Гипотеза |
-| `/v1/subscription/checkout-release` | — | — | Гипотеза |
-| `/v1/subscription/checkout-state` | — | — | Гипотеза |
-| `/v1/subscription/gift-giver` | GET | — | Вызов/ветка в клиенте |
-| `/v1/subscription/gifts` | — | — | Гипотеза |
-| `/v1/subscription/gifts/{}` | — | — | Гипотеза |
-| `/v1/subscription/international-checkouts` | — | — | Гипотеза |
-| `/v1/subscription/methods` | — | — | Гипотеза |
-| `/v1/subscription/methods/{}` | — | — | Гипотеза |
-| `/v1/subscription/methods/{}/default` | — | — | Гипотеза |
-| `/v1/subscription/pay` | — | — | Гипотеза |
-| `/v1/subscription/payments/{}` | — | — | Гипотеза |
-| `/v1/x` | — | — | Гипотеза |
-| `/verify-otp` | POST | — | Вызов/ветка в клиенте |
 
 ## События
 

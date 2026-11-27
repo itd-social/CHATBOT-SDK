@@ -1,4 +1,4 @@
-"""Compare a local JavaScript bundle with the reviewed API inventory.
+"""Compare messenger routes/events with the reviewed API inventory.
 
 This is a lexical inventory, not a JavaScript interpreter or a server schema.
 Only literal routes, explicit HTTP methods and event switches are inspected.
@@ -157,6 +157,21 @@ def route_name(value: str) -> str | None:
     return value.rstrip("/") or "/"
 
 
+def is_messenger_route(path: str) -> bool:
+    """Accept messenger namespaces, not other APIs sharing the same JS files."""
+    if any(part in {".", ".."} for part in path.split("/")):
+        return False
+    return bool(
+        re.match(
+            r"^/(?:api/v1/messenger|v1/chat-files|chats|presence|reactions|media/upload)(?:/|$)",
+            path,
+        )
+        or path.startswith("/chats{}")
+        or path == "/browser-file-session"
+        or re.fullmatch(r"/users/[^/]+/messages(?:/.*)?", path)
+    )
+
+
 def extract(source: str, filename: str) -> list[dict[str, Any]]:
     """Find explicit HTTP calls and event cases; unresolved paths stay hypotheses."""
     stream = tokens(source)
@@ -196,7 +211,7 @@ def extract(source: str, filename: str) -> list[dict[str, Any]]:
         if token.kind not in {"string", "template"}:
             continue
         path = route_name(token.value)
-        if path is None:
+        if path is None or not is_messenger_route(path):
             continue
         # A literal first argument to .get/.post/... supplies a visible HTTP method.
         method = None
@@ -344,12 +359,14 @@ def sdk_routes(directory: Path) -> dict[str, set[str]]:
                     variants = ["".join(parts) for parts in product(*parts)]
                 for value in variants:
                     name = route_name(value)
-                    if name:
+                    if name and is_messenger_route(name):
                         for candidate in {
                             name,
                             re.sub(r"^/api/v1/messenger(?=/)", "", name),
                             re.sub(r"^/api(?=/)", "", name),
                         }:
+                            if not is_messenger_route(candidate):
+                                continue
                             owner = (
                                 "Bot"
                                 if path.stem == "client" or path.stem.startswith("_")
@@ -442,6 +459,7 @@ def snapshot(bundle: Path, sdk: Path) -> dict[str, Any]:
         entry["methods"].sort()
     return {
         "schema_version": 1,
+        "scope": "messenger",
         "sources": sources,
         "entries": [entries[key] for key in sorted(entries)],
     }
@@ -473,6 +491,8 @@ def compare(before: dict[str, Any], after: dict[str, Any]) -> dict[str, list[str
                 for method in entry["sdk_methods"]
             ):
                 raise ValueError("Некорректные имена методов SDK")
+            if kind == "route" and not is_messenger_route(name):
+                continue
             key = f"{entry['kind']} {entry['name']}"
             if key in result:
                 raise ValueError("Повтор записи в описи")
@@ -495,7 +515,7 @@ def compare(before: dict[str, Any], after: dict[str, Any]) -> dict[str, list[str
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Проверить локальный бандл ИТД без запросов к серверу"
+        description="Проверить API мессенджера в локальном бандле ИТД без запросов к серверу"
     )
     parser.add_argument("bundle", type=Path, help="Каталог распакованного бандла")
     parser.add_argument(
