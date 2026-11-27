@@ -11,7 +11,7 @@ import time
 import uuid
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 from urllib.parse import urlsplit
 
 import httpx
@@ -32,7 +32,7 @@ def _validate_refresh(value: str) -> str:
     return value
 
 
-def _claims(token: str) -> dict:
+def _claims(token: str) -> dict[str, Any]:
     try:
         part = token.split(".")[1]
         if len(part) > 16384:
@@ -52,7 +52,7 @@ class RefreshSession:
         *,
         client: httpx.Client,
         base_url: str,
-        session_path: str | os.PathLike | None,
+        session_path: str | os.PathLike[Any] | None,
         access_token: str | None = None,
         rate_limits: RateLimitState | None = None,
     ):

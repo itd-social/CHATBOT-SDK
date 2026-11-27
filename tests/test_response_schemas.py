@@ -28,7 +28,7 @@ def hints(obj):
 
 
 def test_every_schema_is_exported_total_false_and_disclaims_a_spec():
-    assert len(SCHEMA_NAMES) == 12
+    assert len(SCHEMA_NAMES) == 15
     for name in SCHEMA_NAMES:
         cls = getattr(schemas, name)
         assert name in itd_bot.__all__ and getattr(itd_bot, name) is cls
@@ -39,6 +39,11 @@ def test_every_schema_is_exported_total_false_and_disclaims_a_spec():
 @pytest.mark.parametrize(
     ("owner", "method", "expected"),
     [
+        (Bot, "get_chats", schemas.ChatsResponse),
+        (Bot, "get_chat", schemas.ChatPayload),
+        (Bot, "create_direct_chat", schemas.ChatPayload),
+        (Bot, "get_messages", schemas.MessagesResponse),
+        (Bot, "get_messages_around", schemas.MessagesResponse),
         (Bot, "get_updates", schemas.UpdatesResponse),
         (Bot, "send_message", schemas.SendResponse),
         (Bot, "send_message_to_user", schemas.SendResponse),

@@ -51,6 +51,7 @@ pyproject.toml    зависимости, инструменты, версия
 python -m ruff check itd_bot examples tests benchmarks
 python -m ruff format --check itd_bot examples tests benchmarks
 python -m pytest -q
+python -m mypy --strict itd_bot
 python -m build
 ```
 

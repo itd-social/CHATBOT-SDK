@@ -3,9 +3,12 @@ from __future__ import annotations
 import io
 import os
 from pathlib import Path
+from typing import Any
 
 
-def prepare_photo(source: str | os.PathLike | bytes) -> tuple[bytes, str | None, dict]:
+def prepare_photo(
+    source: str | os.PathLike[Any] | bytes,
+) -> tuple[bytes, str | None, dict[str, Any]]:
     try:
         from PIL import Image, ImageOps
     except ImportError as exc:

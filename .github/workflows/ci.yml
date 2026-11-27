@@ -27,6 +27,7 @@ jobs:
       - run: python -m ruff check itd_bot examples tests benchmarks
       - run: python -m ruff format --check itd_bot examples tests benchmarks
       - run: python -m mypy itd_bot
+      - run: python -m mypy --strict itd_bot
 
   test:
     name: Python ${{ matrix.python }} / ${{ matrix.os }}
