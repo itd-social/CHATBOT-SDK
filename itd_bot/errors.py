@@ -36,6 +36,10 @@ class MessagesClosedError(APIError):
     """The recipient's messages are closed."""
 
 
+class StaleClientMessageIdError(APIError):
+    """The server rejected an old client message ID or an incorrect clock."""
+
+
 _ERROR_TYPES: dict[str, type[APIError]] = {
     "nuksta_required": NukstaRequiredError,
     "blocked": BlockedError,
@@ -53,6 +57,8 @@ def _api_error(
     response: Any = None,
 ) -> APIError:
     error_type = _ERROR_TYPES.get(code, APIError) if isinstance(code, str) else APIError
+    if message == "client_message_id is stale or clock is incorrect":
+        error_type = StaleClientMessageIdError
     return error_type(
         status,
         message,
@@ -87,6 +93,12 @@ class RateLimitError(APIError):
 
 class ProtocolError(Exception):
     """The server returned a response incompatible with the observed protocol."""
+
+
+class _InvalidJSON(ProtocolError):
+    def __init__(self, raw: bytes) -> None:
+        super().__init__("Expected JSON response")
+        self.raw = raw
 
 
 class ResetRequired(ProtocolError):

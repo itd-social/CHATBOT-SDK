@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from unittest.mock import ANY
 
 import httpx
 import pytest
@@ -362,6 +363,7 @@ def test_video_bytes_are_compressed_from_a_temp_file_and_sent_as_mp4(ffmpeg):
         "text": "clip",
         "reply_to_id": "msg-0",
         "attachments": ["file-1"],
+        "client_message_id": ANY,
     }
 
 
