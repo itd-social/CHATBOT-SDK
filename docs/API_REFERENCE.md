@@ -125,7 +125,8 @@ poll(since, handler, interval=2.0, on_checkpoint=None,
 
 ```python
 Dispatcher(bot, *, self_user_id, username=None, auto_typing=True,
-           typing_interval=4.0, typing_delay=0.5, read_mode="blocking")
+           typing_interval=4.0, typing_delay=0.5, read_mode="blocking",
+           deduplicate=True, dedup_capacity=4096, dedup_store=None)
 Dispatcher.from_bot(bot)
 ```
 
@@ -139,6 +140,8 @@ Dispatcher.from_bot(bot)
 | `close()` | Дождаться очереди отметок; `run_polling` вызывает его сам |
 
 `read_mode`: `"blocking"` (по умолчанию, отметка до обработчика), `"background"` (в фоне, ошибки только в лог), `"off"`.
+
+`deduplicate=False` отключает защиту от повторных сообщений. `dedup_capacity` задаёт размер стандартного `MemoryDedupStore`; внешний `dedup_store` реализует `DedupStore` (`claim`, `complete`, `release`), см. [дедупликацию](USAGE.md#защита-от-повторной-обработки).
 
 Подробнее про контекст и приоритеты: [руководство](USAGE.md#команды-и-обработчики).
 
