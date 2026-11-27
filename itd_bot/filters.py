@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from .context import EventContext, MessageContext
 from .dispatcher import CommandContext
+from .stickers import message_stickers
 
 if TYPE_CHECKING:
     from .fsm import FSM
@@ -115,6 +116,16 @@ def text(value: str) -> Filter:
         raise ValueError("text requires a string")
     return predicate(
         lambda context: isinstance(context, MessageContext) and context.text == value
+    )
+
+
+def sticker() -> Filter:
+    """Match incoming sticker entities without activating sticker sending."""
+    return predicate(
+        lambda context: (
+            isinstance(context, MessageContext)
+            and bool(message_stickers(context.message))
+        )
     )
 
 

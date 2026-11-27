@@ -32,6 +32,7 @@ class EntityType(str, Enum):
     CODE = "code"
     SPOILER = "spoiler"
     TEXT_LINK = "text_link"
+    STICKER = "sticker"
 
     def __str__(self) -> str:
         return self.value

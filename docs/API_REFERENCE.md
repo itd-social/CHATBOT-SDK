@@ -181,6 +181,8 @@ Router.from_bot(bot, **kwargs)
 
 Режимы `first`/`all`, порядок, контексты и middleware: [Router](ROUTER.md).
 
+`filters.sticker()` выбирает входящие сообщения со стикер-сущностями; `message_stickers(message)` возвращает список исходных словарей. Только чтение: [статус стикеров](STICKERS.md).
+
 ### FSM
 
 | Что | Описание |
@@ -221,7 +223,7 @@ python -m mypy --strict itd_bot
 
 ## Типы
 
-Описания JSON лежат в `itd_bot.schemas` и экспортируются из `itd_bot`: `ChatPayload`, `ChatsResponse`, `MessagesResponse`, `UpdateEvent`, `MessagePayload`, `AttachmentPayload`, `UpdatesResponse`, `ReactionsResponse`, `ReactionEntry`, `ReactionValue`, `SendResponse`, `FileLinksResponse`, `FileLink`, `UploadInitResponse`, `UploadFinalizeResponse`.
+Описания JSON лежат в `itd_bot.schemas` и экспортируются из `itd_bot`: `ChatPayload`, `ChatsResponse`, `MessagesResponse`, `UpdateEvent`, `MessagePayload`, `AttachmentPayload`, `StickerEntity`, `UpdatesResponse`, `ReactionsResponse`, `ReactionEntry`, `ReactionValue`, `SendResponse`, `FileLinksResponse`, `FileLink`, `UploadInitResponse`, `UploadFinalizeResponse`.
 
 `get_chats()` возвращает `ChatsResponse`, `get_chat()` и `create_direct_chat()` — `ChatPayload`, история (`get_messages`, `get_messages_around`) — `MessagesResponse`. Поля чата и страницы взяты из чтения клиентского бандла, остальные схемы — также из кода SDK и автономных тестов. Ответы не преобразуются, дополнительные поля сохраняются.
 
