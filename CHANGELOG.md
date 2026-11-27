@@ -4,6 +4,32 @@
 
 <!-- version list -->
 
+## [1.4.0](https://github.com/itd-social/CHATBOT-SDK/compare/v1.3.1...v1.4.0) (2026-11-27)
+
+### ✨ Новые возможности
+
+* **protocol:** Добавлен толерантный разбор обновлений ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+* **config:** Добавлено чтение настроек из окружения ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+* **messages:** Добавлены UUIDv7 и обработка replayed ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+* **errors:** Добавлены исключения для ошибок доступа к сообщениям ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+* **errors:** Добавлены исключения для ошибок доступа к сообщениям ([#47](https://github.com/itd-social/CHATBOT-SDK/pull/47), [324fa55](https://github.com/itd-social/CHATBOT-SDK/commit/324fa55c949251f76d56fdb0bb25409347c2d938))
+* **polling:** Добавлены очереди по чатам и сохранение непрерывного курсора ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+
+### 🐛 Исправления
+
+* **dispatcher:** Добавлена защита от повторной обработки сообщений ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+* **websocket:** Добавлено обновление сессии при закрытии 4001 и 4003 ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+* **release:** Принятые изменения v1.4.0 перенесены в main ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+
+### ⚡️ Производительность
+
+* **dispatcher:** Добавлены пакетные отметки прочтения ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+
+### ✅ Тесты
+
+* **perf:** Добавлен воспроизводимый стенд производительности ([#56](https://github.com/itd-social/CHATBOT-SDK/pull/56), [201fa56](https://github.com/itd-social/CHATBOT-SDK/commit/201fa56afd4031919f2e54cc2d4c6ebb9666b4b6))
+
+
 ## [1.3.1](https://github.com/itd-social/CHATBOT-SDK/compare/v1.3.0...v1.3.1) (2026-11-26)
 
 ### 🐛 Исправления
