@@ -9,6 +9,7 @@ from .errors import (
     NukstaRequiredError,
     RateLimitError,
     SessionStorageError,
+    StaleClientMessageIdError,
     UploadQuotaError,
 )
 from .formatting import Text, utf16_length
@@ -42,6 +43,7 @@ __all__ = [
     "MessageContext",
     "SentMessage",
     "APIError",
+    "StaleClientMessageIdError",
     "NukstaRequiredError",
     "BlockedError",
     "MessagesClosedError",
