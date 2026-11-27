@@ -1,0 +1,2320 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "file": "assets/index-07fe8efee12d.js",
+      "role": "index",
+      "sha256": "7e730398983fc42be055d6965c6da3337d9b8ec56c86aff603d9cbb802353588"
+    },
+    {
+      "file": "assets/index-09be27e35f16.js",
+      "role": "index",
+      "sha256": "2631a8aad558fb50a9fc23214c9b4b7107af86e60094d097fed92cdd4d8ba57a"
+    },
+    {
+      "file": "assets/index-0dc0e7d2750d.js",
+      "role": "index",
+      "sha256": "9c8a937851783943cf03b78f0dbebc0948cd390a5cdd7a5be878304b53b466e0"
+    },
+    {
+      "file": "assets/index-18f7d080a28e.js",
+      "role": "index",
+      "sha256": "e612e004ecd45bb304d1bf30717a5531e5159a9a8682e6ef6de307bbd620e347"
+    },
+    {
+      "file": "assets/index-1afa424b78af.js",
+      "role": "index",
+      "sha256": "dff4dfb5cf3d26f0916d549df1bb65e817d312c71076e0ad10138d62f4abf861"
+    },
+    {
+      "file": "assets/index-1f627254605d.js",
+      "role": "index",
+      "sha256": "da98e26b505d2fe687474f0353501d96bb7e41ef99ddb280a73ae167b4bbb1fd"
+    },
+    {
+      "file": "assets/index-1f7c8b01465d.js",
+      "role": "index",
+      "sha256": "279217a6802831c32f91e3808312b101c7352d93e8acb2126b81a81c5c226e37"
+    },
+    {
+      "file": "assets/index-209f3332dc71.js",
+      "role": "index",
+      "sha256": "37de7df608a97dbef8007f1d7e21cb108b1cc4ccb556872bd161bfea66cc5fac"
+    },
+    {
+      "file": "assets/index-3e6a0e2a82fe.js",
+      "role": "index",
+      "sha256": "9c8977b7c2d2cd299449508e5eb09523629a8563bd8924f5af0c0290c84d1284"
+    },
+    {
+      "file": "assets/index-45935309f051.js",
+      "role": "index",
+      "sha256": "1e484972863d3108cd4bb2e77e14757e21d6e57dfd838010b3e8f4afd1d4fd60"
+    },
+    {
+      "file": "assets/index-491ce70a4a43.js",
+      "role": "index",
+      "sha256": "f5ebfb7c2d55ca5b3a75f8c972338495437e47418db595e711eb97042ab1379d"
+    },
+    {
+      "file": "assets/index-49b6e0039bbd.js",
+      "role": "index",
+      "sha256": "b99ef2b4df63974d0b08d96c77b61c5fce7451062a6f6fb007faf61ecba1089b"
+    },
+    {
+      "file": "assets/index-4d81876877b2.js",
+      "role": "index",
+      "sha256": "7fdb1d1d2d99ac3925b10ec13007e9b97044307bf1a8afe12675375037675057"
+    },
+    {
+      "file": "assets/index-4f5f8da88927.js",
+      "role": "index",
+      "sha256": "3f068b72a7742e21b7ce23d88787655c651e7d2e58b4172c583912881d5d807a"
+    },
+    {
+      "file": "assets/index-50bf15b3782a.js",
+      "role": "index",
+      "sha256": "976d32891daef19863d966963234eec84dd0faef31ca3d78f9d927f5876c9f13"
+    },
+    {
+      "file": "assets/index-5MO-X-ae43fe19c59c.js",
+      "role": "index",
+      "sha256": "99fc7e681d6ca13fc01040e510e4b9d431ae5dc2f6d85b5d401a5a74e4bc9e59"
+    },
+    {
+      "file": "assets/index-6094ff41840d.js",
+      "role": "index",
+      "sha256": "7acc6a6d4edf7cccbae78b1a63be310e5c2fdba0a05c3b0b97ead68acbf0459d"
+    },
+    {
+      "file": "assets/index-6421dfd98111.js",
+      "role": "index",
+      "sha256": "87d3e6e7dacafcb3997ccada062b0046877393f2a435cdce1bea40224a65cd7b"
+    },
+    {
+      "file": "assets/index-6694bf902d4a.js",
+      "role": "index",
+      "sha256": "91162d35b6397e28fc6c1aeca7fa5bc26bd6cb461c3d2aadd374cd5e3b813f16"
+    },
+    {
+      "file": "assets/index-742c3f452b7c.js",
+      "role": "index",
+      "sha256": "9af58c02084c9f70a55b673548d2b385992459c536dcba4bf1a9c950d93d7362"
+    },
+    {
+      "file": "assets/index-7e8205c18f0d.js",
+      "role": "index",
+      "sha256": "3ed10a0e7d99e120e552aa01d17d726e03fd3f556fd26d789e3f5bfc040f24e9"
+    },
+    {
+      "file": "assets/index-8bb503cd98f0.js",
+      "role": "index",
+      "sha256": "dcdf971357fdbd843fe032af5fd044a6cd9eabe99701a0c53fb90a650d6e0ba3"
+    },
+    {
+      "file": "assets/index-8f65ff1253af.js",
+      "role": "index",
+      "sha256": "c20595359b77aa67209f6fbae857a76d56563fbff6d7fe7b8b49546591fc9342"
+    },
+    {
+      "file": "assets/index-9a79cc0eaf2b.js",
+      "role": "index",
+      "sha256": "6bb1bbbe746f1130ea6bfa5860699e50144a35675c0d569e1751837be00d0033"
+    },
+    {
+      "file": "assets/index-a2d7bb0ce4b0.js",
+      "role": "index",
+      "sha256": "b970183dc1a0dd0da6bbc89c04df2d99eee934c9a22b953d03d093e2e3625df6"
+    },
+    {
+      "file": "assets/index-b12534401229.js",
+      "role": "index",
+      "sha256": "f9bcb38196a5dbbc1bf0b33e9e5ccbdfbc63a80d534561ae553b4cd8d8ac216e"
+    },
+    {
+      "file": "assets/index-bd47e3a4c77c.js",
+      "role": "index",
+      "sha256": "6e21359a05b95607956bc4b10cb635a825d5ba46eafb389c438e389d22a02a53"
+    },
+    {
+      "file": "assets/index-BrHZ-7dcbcd18932e.js",
+      "role": "index",
+      "sha256": "25e887c955c80478a89b02d9f18e6f9df61a63012263113be80a03b79bba8eaf"
+    },
+    {
+      "file": "assets/index-c-e18e2ea38f71.js",
+      "role": "index",
+      "sha256": "fd6b1662b2aa739764cfa8f14ac90a5c3f4dd19785ab00d0471fda3ae6564744"
+    },
+    {
+      "file": "assets/index-c3b08c8a3919.js",
+      "role": "index",
+      "sha256": "a99ea354771e315a5696ddc16c643acb8734c308aefbec086df677ad97d00b70"
+    },
+    {
+      "file": "assets/index-c5409765ce30.js",
+      "role": "index",
+      "sha256": "aad26d18e09be00267b1d33512504176cdc003129703c4dbfca946553b7f5d0c"
+    },
+    {
+      "file": "assets/index-c5eff831e9eb.js",
+      "role": "index",
+      "sha256": "46158d67160686ec9e1cf82e9abfbf660744a767996060963f5e2e211d883f57"
+    },
+    {
+      "file": "assets/index-CcA--8354330b392d.js",
+      "role": "index",
+      "sha256": "e5b7c0087978dd1e2822cb864514699c2f18cf12f4982cc0e6cf178727220726"
+    },
+    {
+      "file": "assets/index-cdec96a6684f.js",
+      "role": "index",
+      "sha256": "6a02c7696d04be9ec33289dd8dc15cbb6006398cd3b5ba618dafde21d50269ca"
+    },
+    {
+      "file": "assets/index-D-9d6773488767.js",
+      "role": "index",
+      "sha256": "ba04ad7020398645087698ddf893daae4b688476b689973f8978d028b4003783"
+    },
+    {
+      "file": "assets/index-d4070b367117.js",
+      "role": "index",
+      "sha256": "0715d6d29bb74a9873b1a065f1bef467ffff29773d4ba6f3bf051ddf69121485"
+    },
+    {
+      "file": "assets/index-dea819411024.js",
+      "role": "index",
+      "sha256": "9238319d7a28335c22c61d50af6bdbadd670205063f4f3860c940fdf5d185db7"
+    },
+    {
+      "file": "assets/index-e2701f71a450.js",
+      "role": "index",
+      "sha256": "d866386697b40f1792d59fe72167f5c7bd729044326804d5d309d920b41d347f"
+    },
+    {
+      "file": "assets/index-ee62360117d4.js",
+      "role": "index",
+      "sha256": "f9a1c5f72ed9df486202d1c109ef776cf8ffd55d5d6611758f789746f4ab591d"
+    },
+    {
+      "file": "assets/index-f6b06b0d3392.js",
+      "role": "index",
+      "sha256": "79042be5461dd4a9eca72a6a1f65587d5bfd83cb4ac14867e2c73776539ec8b5"
+    },
+    {
+      "file": "assets/messengerMediaApi-6d58dc74ee5a.js",
+      "role": "media",
+      "sha256": "851b9596925d1e96f56690794d5e21a09cb03d423e72ed329c39b75a9bcc9a0d"
+    },
+    {
+      "file": "assets/route-18abea986384.js",
+      "role": "route",
+      "sha256": "c7d151f6af44ddded12f8b8710309c471e146e18b81f57c20a87893cdce7bb6f"
+    }
+  ],
+  "entries": [
+    {
+      "kind": "event",
+      "name": "chat_created",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 408515,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "chat_deleted",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 408676,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "chat_settings",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 405527,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "history_cleared",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 408716,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "message_deleted",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [
+        "Dispatcher.deleted"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 406486,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "message_edited",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [
+        "Dispatcher.edited"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 405913,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "message_reactions",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [
+        "Dispatcher.reaction"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 405490,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "messages_deleted",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [
+        "Dispatcher.deleted"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 406794,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "messages_read",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 407223,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "new_message",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [
+        "Dispatcher.handle"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 405341,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "new_messages",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [
+        "Dispatcher.handle"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 405390,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "own_messages",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 405409,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "presence",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 408089,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "typing",
+      "confidence": "confirmed",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 408248,
+          "method": null,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/legal-documents",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-b12534401229.js",
+          "offset": 364,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/legal-documents/social/{}",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-b12534401229.js",
+          "offset": 445,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/legal-documents/social/{}/versions",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-b12534401229.js",
+          "offset": 545,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/legal-documents/social/{}/versions/{}",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-b12534401229.js",
+          "offset": 655,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/v1/auth",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 177108,
+          "method": null,
+          "confidence": "hypothesis"
+        },
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 186983,
+          "method": null,
+          "confidence": "hypothesis"
+        },
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 216422,
+          "method": null,
+          "confidence": "hypothesis"
+        },
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 30916,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/v1/auth/phone/config",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 255060,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/v1/auth/phone/resume",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 216699,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/v1/auth/phone/reverse",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 229114,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/v1/auth/terms-acceptance",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 222063,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/v1/event-assets",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 453028,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/v1/messenger",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 177140,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/api/v1/messenger/browser-file-session",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 353510,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/change/confirm",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32817,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/change/pending",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32938,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/change/pending/{}",
+      "confidence": "confirmed",
+      "methods": [
+        "DELETE"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32995,
+          "method": "DELETE",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/change/proof",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32665,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/change/wait",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32874,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/dm",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.create_direct_chat"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 346349,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/unread",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [
+        "Bot.get_unread_count"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 181909,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [
+        "Bot.get_chat"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 346728,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/accept",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.accept_chat"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 345710,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/action",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.send_action"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 349066,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/delete",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.delete_chat"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 349148,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/file-links",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.get_file_links"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 347986,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/heard",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.get_heard_messages"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 345907,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/media",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [
+        "Bot.get_media"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 347889,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.send_message"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 347436,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages/around/{}",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [
+        "Bot.get_messages_around"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 347187,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages/delete-for-all",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.delete_messages"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 348403,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages/delete-for-me",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.delete_messages"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 348279,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages/forward",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.forward_messages"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 348583,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages/{}",
+      "confidence": "confirmed",
+      "methods": [
+        "PATCH"
+      ],
+      "sdk_methods": [
+        "Bot.edit_message"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 348165,
+          "method": "PATCH",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages/{}/heard",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.mark_voice_heard"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 345801,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages/{}/reactions",
+      "confidence": "confirmed",
+      "methods": [
+        "GET",
+        "PUT"
+      ],
+      "sdk_methods": [
+        "Bot.get_reactions",
+        "Bot.set_reactions"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 346089,
+          "method": "GET",
+          "confidence": "confirmed"
+        },
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 346193,
+          "method": "PUT",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/messages{}",
+      "confidence": "hypothesis",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 347028,
+          "method": "GET",
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/mute",
+      "confidence": "confirmed",
+      "methods": [
+        "PATCH"
+      ],
+      "sdk_methods": [
+        "Bot.set_muted"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 346955,
+          "method": "PATCH",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/pin",
+      "confidence": "confirmed",
+      "methods": [
+        "PATCH"
+      ],
+      "sdk_methods": [
+        "Bot.set_pinned"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 346886,
+          "method": "PATCH",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/read",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.mark_read"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 348846,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats/{}/unread",
+      "confidence": "confirmed",
+      "methods": [
+        "PATCH"
+      ],
+      "sdk_methods": [
+        "Bot.mark_unread"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 345618,
+          "method": "PATCH",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/chats{}{}manual_unread=1",
+      "confidence": "hypothesis",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 346620,
+          "method": "GET",
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/correctors/cancel",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 602024,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/correctors/inventory",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 520001,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/correctors/report",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 602386,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/correctors/state",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 520398,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/email/attach",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 31870,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/email/change",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32290,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/event-nicknames",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 449080,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/files/banner-drawing",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190978,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/media/upload/init",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.upload_file"
+      ],
+      "evidence": [
+        {
+          "file": "assets/messengerMediaApi-6d58dc74ee5a.js",
+          "offset": 3195,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/media/upload/{}/finalize",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.upload_file"
+      ],
+      "evidence": [
+        {
+          "file": "assets/messengerMediaApi-6d58dc74ee5a.js",
+          "offset": 4069,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/messenger/entry",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/route-18abea986384.js",
+          "offset": 195928,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/methods",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 31765,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/phone/change",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32095,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/presence",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.get_presence_many"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 349328,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/presence/{}",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [
+        "Bot.get_presence"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 349243,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/profile-avatar",
+      "confidence": "confirmed",
+      "methods": [
+        "DELETE",
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 625094,
+          "method": "GET",
+          "confidence": "confirmed"
+        },
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 625183,
+          "method": "DELETE",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/reactions/available",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [
+        "Bot.get_reaction_catalog"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 346006,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/red-pens/cancel",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 611624,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/red-pens/inventory",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 517921,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/red-pens/report",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 611964,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/red-pens/state",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 518316,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/resend-otp",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 31999,
+          "method": "POST",
+          "confidence": "confirmed"
+        },
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32213,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/set-password",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 31801,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/updates",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [
+        "Bot.get_updates"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 349561,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/users",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 445509,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/users/check-username",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 209387,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/users/profile",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 209501,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/users/{}/messages",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [
+        "Bot.send_message_to_user"
+      ],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 347666,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/balance",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624728,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/inventory",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624983,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/nicknames",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624810,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/nicknames/active",
+      "confidence": "confirmed",
+      "methods": [
+        "PUT"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624882,
+          "method": "PUT",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 623750,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}/balloons",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 623894,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}/curtains",
+      "confidence": "confirmed",
+      "methods": [
+        "PUT"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624324,
+          "method": "PUT",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}/curtains/donations",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624444,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}/cushion",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624058,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}/cushion/claim",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624213,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}/placements",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 625265,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}/placements/{}/erase",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 625565,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/profiles/{}/window/break",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 625429,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/shop",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 599962,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/aliceai/waste-paper/posts/{}",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 624599,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/auth/sessions",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190628,
+          "method": null,
+          "confidence": "hypothesis"
+        },
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190696,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/auth/sessions/{}",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190658,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/event-assets",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 453125,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/event/status",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 443880,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/halloween",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 453557,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/i",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 188997,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/portal",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 463388,
+          "method": "GET",
+          "confidence": "confirmed"
+        },
+        {
+          "file": "assets/index-7e8205c18f0d.js",
+          "offset": 224,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190185,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/auto-renewal",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190244,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/bind-card",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190285,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/checkout-release",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 189935,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/checkout-state",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 189885,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/gift-giver",
+      "confidence": "confirmed",
+      "methods": [
+        "GET"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 471494,
+          "method": "GET",
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/gifts",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190115,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/gifts/{}",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190148,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/international-checkouts",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190066,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/methods",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190322,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/methods/{}",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190422,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/methods/{}/default",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190366,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/pay",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 190209,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/subscription/payments/{}",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 189990,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/v1/x",
+      "confidence": "hypothesis",
+      "methods": [],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "offset": 189020,
+          "method": null,
+          "confidence": "hypothesis"
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "name": "/verify-otp",
+      "confidence": "confirmed",
+      "methods": [
+        "POST"
+      ],
+      "sdk_methods": [],
+      "evidence": [
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 31928,
+          "method": "POST",
+          "confidence": "confirmed"
+        },
+        {
+          "file": "assets/index-742c3f452b7c.js",
+          "offset": 32369,
+          "method": "POST",
+          "confidence": "confirmed"
+        }
+      ]
+    }
+  ],
+  "reviewed_on": "2026-11-27",
+  "sdk_commit": "41cc7d7f8fc1928121afba40cf9fe06f12b7aa99",
+  "confidence_meaning": {
+    "confirmed": "Видимый вызов с HTTP-именем метода/fetch или ветка switch обработки событий; не проверка сервера.",
+    "prepared_inactive": "Клиентская заготовка; не означает доступность на сервере.",
+    "hypothesis": "Строка пути или частично динамический шаблон; назначение и HTTP-метод требуют ручной проверки."
+  },
+  "inactive_features": [
+    {
+      "name": "sticker",
+      "confidence": "prepared_inactive",
+      "evidence": [
+        {
+          "file": "assets/index-1f7c8b01465d.js",
+          "fact": "Валидатор сущности проверяет строковый sticker_id длиной до 64; клиент блокирует исходящую отправку."
+        },
+        {
+          "file": "assets/route-18abea986384.js",
+          "fact": "Наличие sticker в проверке сущностей не подтверждает отправку или каталог."
+        }
+      ],
+      "issue": 17
+    }
+  ]
+}
