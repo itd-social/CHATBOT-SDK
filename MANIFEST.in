@@ -9,3 +9,4 @@ prune .bundle
 prune .venv
 global-exclude __pycache__ *.py[cod] .env .env.*
 global-exclude .itd-session.json .itd-session-* .itd-refresh-session.json .itd-refresh-test-cursor*
+include .env.example
