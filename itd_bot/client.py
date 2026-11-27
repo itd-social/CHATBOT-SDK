@@ -24,6 +24,7 @@ from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
 from .environment import _environment_options
 from .errors import APIError as APIError
+from .errors import MessageValidationError
 from .errors import ProtocolError as ProtocolError
 from .errors import RateLimitError as RateLimitError
 from .errors import ResetRequired as ResetRequired
@@ -50,6 +51,27 @@ from .user import User
 _log = logging.getLogger(__name__)
 _NO_RETRY = "_itd_no_retry"
 _WS_AUTH_RETRIES = 3
+
+
+def _validate_message_limits(text: str, entities: list[Any] | None) -> None:
+    # surrogatepass matches JavaScript String.length even for lone surrogates.
+    if len(text.encode("utf-16-le", errors="surrogatepass")) // 2 > 4096:
+        raise MessageValidationError(
+            "Текст превышает лимит клиента сайта: 4096 единиц UTF-16."
+        )
+    if entities is not None:
+        if len(entities) > 50:
+            raise MessageValidationError(
+                "Количество сущностей превышает лимит клиента сайта: 50."
+            )
+        if any(
+            isinstance(item, dict) and item.get("type") == "sticker"
+            for item in entities
+        ):
+            raise MessageValidationError(
+                "Клиент сайта запрещает отправку стикеров; "
+                "см. https://github.com/itd-social/CHATBOT-SDK/issues/17."
+            )
 
 
 def _send_body(
@@ -551,7 +573,16 @@ class Bot:
         attachments: list[Any] | None = None,
         entities: list[Any] | None = None,
         client_message_id: str | None = None,
+        validate_limits: bool = False,
     ) -> SendResponse:
+        """Send raw text/entities, optionally checking the web-client limits.
+
+        With validate_limits=True, reject text over 4096 UTF-16 code units,
+        more than 50 entities or sticker entities with MessageValidationError
+        before HTTP. These are client limits, not a server guarantee.
+        """
+        if validate_limits:
+            _validate_message_limits(text, entities)
         body = _send_body(
             {"text": text, "reply_to_id": reply_to_id},
             attachments,
@@ -571,7 +602,11 @@ class Bot:
         attachments: list[Any] | None = None,
         entities: list[Any] | None = None,
         client_message_id: str | None = None,
+        validate_limits: bool = False,
     ) -> SendResponse:
+        """Send to a user; validate_limits has the same rules as send_message."""
+        if validate_limits:
+            _validate_message_limits(text, entities)
         body = _send_body({"text": text}, attachments, entities, client_message_id)
         return cast(
             SendResponse,
@@ -604,6 +639,7 @@ class Bot:
         *,
         attachments: list[Any] | None = None,
         entities: list[Any] | None = None,
+        validate_limits: bool = False,
     ) -> dict[str, Any]:
         """Edit a message.
 
@@ -611,7 +647,11 @@ class Bot:
         the server as ``[]``. ``send_message`` skips empty entities instead.
         The SDK keeps the difference on purpose: an empty list may clear the
         formatting on edit. Not verified on the live ITD.
+        validate_limits=True applies the same client limits as send_message
+        before HTTP; the default keeps the raw request unchanged.
         """
+        if validate_limits:
+            _validate_message_limits(text, entities)
         body: dict[str, Any] = {"text": text}
         if attachments:
             body["attachments"] = attachments

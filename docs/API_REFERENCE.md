@@ -27,6 +27,7 @@ Bot.from_env(**kwargs)
 | `NukstaRequiredError` | Код `nuksta_required`; наследует `APIError` |
 | `BlockedError` | Код `blocked`; наследует `APIError` |
 | `MessagesClosedError` | Код `messages_closed`; наследует `APIError` |
+| `MessageValidationError` | Нарушен лимит клиента сайта при `validate_limits=True`; наследует `ValueError`, запрос не отправлен |
 | `StaleClientMessageIdError` | Сообщение сервера `client_message_id is stale or clock is incorrect`; наследует `APIError` |
 | `RateLimitError` | Ответ 429 или локальная блокировка |
 | `UploadQuotaError` | Исчерпан бюджет загрузок (наследует `APIError`) |
@@ -53,17 +54,19 @@ Bot.from_env(**kwargs)
 |---|---|
 | `get_messages(chat_id, limit=None, before=None)` | История |
 | `get_messages_around(chat_id, message_id, limit=40)` | История вокруг сообщения |
-| `send_message(chat_id, text, reply_to_id=None, attachments=None, entities=None, client_message_id=None)` | Отправить |
-| `send_message_to_user(user_id, text, attachments=None, entities=None, client_message_id=None)` | Отправить пользователю |
+| `send_message(chat_id, text, reply_to_id=None, attachments=None, entities=None, client_message_id=None, validate_limits=False)` | Отправить |
+| `send_message_to_user(user_id, text, attachments=None, entities=None, client_message_id=None, validate_limits=False)` | Отправить пользователю |
 | `send_formatted(chat_id, content, **kwargs)` | Отправить `Text` |
 | `send_formatted_to_user(user_id, content, **kwargs)` | Отправить `Text` пользователю |
-| `edit_message(chat_id, message_id, text, attachments=None, entities=None)` | Изменить |
+| `edit_message(chat_id, message_id, text, attachments=None, entities=None, validate_limits=False)` | Изменить |
 | `delete_messages(chat_id, message_ids, for_everyone=False)` | Удалить |
 | `forward_messages(chat_id, source_chat_id, message_ids, client_message_ids=None)` | Переслать; `client_message_ids` — `list[str]`, `dict[str, str]` или `None`, см. [руководство](USAGE.md#сообщения) |
 | `mark_read(chat_id, message_id)` | Прочитано до сообщения включительно |
 | `mark_voice_heard(chat_id, message_id)`, `get_heard_messages(chat_id, message_ids)` | Прослушивание голосовых |
 
 При отправке без `client_message_id` SDK создаёт UUIDv7. Явно переданный ID обрабатывается по прежним правилам. Флаг `replayed` остаётся в словаре ответа, если его прислал сервер; см. [клиентский ID](USAGE.md#клиентский-id-и-повтор).
+
+`validate_limits=True` включает локальную проверку текста и сущностей до HTTP; правила и границы — в [лимитах сообщения](USAGE.md#лимиты-текста-и-вложений).
 
 ## Статусы в чате
 
