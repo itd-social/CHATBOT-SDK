@@ -157,6 +157,27 @@ Dispatcher.from_bot(bot)
 
 Подробнее про контекст и приоритеты: [руководство](USAGE.md#команды-и-обработчики).
 
+### Router
+
+```python
+Router(bot=None, *, self_user_id=None, match="first", **dispatcher_options)
+Router.from_bot(bot, **kwargs)
+```
+
+| Что | Описание |
+|---|---|
+| `message(*conditions, order=0)` | Несколько обработчиков входящих сообщений с `MessageContext` или `CommandContext` |
+| `on_event(event_type, *conditions, order=0)` | Обработчики других событий с `EventContext` |
+| `include_router(router)` | Вложить непривязанный `Router()` |
+| `middleware(func)` | Синхронная обёртка `(next_handler, ctx)` |
+| `STOP` | Прекратить маршрутизацию текущего сообщения или события |
+| `on_error()`, `handle(event)`, `run_polling(since=None, *, state_path=None, handle_signals=True, **kwargs)`, `close()` | Прежняя политика ошибок, polling и завершения Dispatcher |
+| `filters.event_type(value)`, `filters.chat(chat_id)`, `filters.user(user_id)` | Фильтры события, чата, пользователя |
+| `filters.command(name, prefix="/")`, `filters.text(value)`, `filters.regex(pattern, flags=0)` | Локальная команда, точный текст, поиск regex |
+| `filters.predicate(function)`, `Filter & Filter`, `Filter \| Filter`, `~Filter` | Свой callable и комбинации фильтров |
+
+Режимы `first`/`all`, порядок, контексты и middleware: [Router](ROUTER.md).
+
 ## Форматирование
 
 `Text(text="")` с методами `add(text, styles=(), url=None)`, `bold`, `italic`, `underline`, `strike`, `code`, `spoiler`, `link`. `build()` возвращает `(text, entities)`. `utf16_length(text)` считает длину в UTF-16. Markdown не поддерживается.

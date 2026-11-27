@@ -1,3 +1,4 @@
+from . import filters as filters
 from .actions import ChatAction, ChatActionHandle
 from .client import APIError, Bot, ProtocolError, ResetRequired
 from .context import Attachment, EventContext, MessageContext, SentMessage
@@ -17,6 +18,7 @@ from .formatting import Text, utf16_length
 from .polling import ErrorAction
 from .post import Post
 from .rate_limits import RateLimitConfig, RateLimiter
+from .router import Router
 from .schemas import (
     AttachmentPayload,
     ChatPayload,
@@ -62,6 +64,8 @@ __all__ = [
     "SessionStorageError",
     "CommandContext",
     "Dispatcher",
+    "Router",
+    "filters",
     "DedupStore",
     "MemoryDedupStore",
     "ErrorAction",
