@@ -1,46 +1,36 @@
 from __future__ import annotations
 
 import hashlib
-import json as jsonlib
 import logging
-import mimetypes
 import os
-import re
 import threading
 import time
 import uuid
 from collections import deque
 from collections.abc import Callable, Iterator, Mapping
-from concurrent.futures import ThreadPoolExecutor, wait
-from copy import deepcopy
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import quote, urljoin, urlsplit
+from urllib.parse import urlsplit
 
 import httpx
 
+from . import _files, _transport, _updates, _websocket
+from ._transport import _id
+from ._updates import _event_type as _event_type
+from ._updates import _EventRunner as _EventRunner
+from ._updates import _run_by_chat as _run_by_chat
+from ._websocket import _WebSocketClosed as _WebSocketClosed
 from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
-from .chat_queues import _poll_chat_queues
 from .environment import _environment_options
 from .errors import APIError as APIError
-from .errors import (
-    ProtocolError,
-    RateLimitError,
-    ResetRequired,
-    _api_error,
-    _InvalidJSON,
-)
+from .errors import ProtocolError as ProtocolError
+from .errors import RateLimitError as RateLimitError
+from .errors import ResetRequired as ResetRequired
 from .message_ids import _uuid7
 from .polling import (
     ErrorAction,
-    _BatchHandler,
-    backoff_delay,
-    error_status,
-    is_redeliver,
-    is_transient,
     pause,
-    wait_for_wake,
 )
 from .post import Post
 from .rate_limits import RateLimiter, default_limiter
@@ -59,12 +49,6 @@ _NO_RETRY = "_itd_no_retry"
 _WS_AUTH_RETRIES = 3
 
 
-class _WebSocketClosed(ProtocolError):
-    def __init__(self, code: int | None) -> None:
-        super().__init__("WebSocket closed")
-        self.code = code
-
-
 def _send_body(
     body: dict[str, Any],
     attachments: list | None,
@@ -81,12 +65,6 @@ def _send_body(
     elif client_message_id:
         body["client_message_id"] = client_message_id
     return body
-
-
-def _id(value: str) -> str:
-    if not isinstance(value, str) or not value or value in {".", ".."}:
-        raise ValueError("ID must be a non-empty string")
-    return quote(value, safe="")
 
 
 class Bot:
@@ -297,61 +275,18 @@ class Bot:
         raw: bool = False,
     ) -> Any:
         """Call an API path on the configured origin, including experimental endpoints."""
-        if (
-            not path.startswith(("/api/", "/v1/"))
-            or "?" in path
-            or "#" in path
-            or "\\" in path
-            or any(part in {".", ".."} for part in path.split("/"))
-            or "%" in path
-            and any(
-                part.lower() in {"%2e", "%2e%2e", ".%2e", "%2e."}
-                for part in path.split("/")
-            )
-        ):
-            raise ValueError(
-                "path must be a safe /api/ or /v1/ path without query or fragment"
-            )
-        if sum(value is not None for value in (json, content, files)) > 1:
-            raise ValueError("use only one of json, content or files")
-        request_headers = dict(headers or {})
-        if any(
-            key.lower() in {"authorization", "host", "cookie"}
-            for key in request_headers
-        ):
-            raise ValueError("authentication and host headers are managed by the SDK")
-        retries = self._get_retries if method.upper() == "GET" else 0
-        attempt = 0
-        while True:
-            try:
-                return self._api_request_once(
-                    method,
-                    path,
-                    params=params,
-                    json=json,
-                    content=content,
-                    files=files,
-                    headers=dict(request_headers),
-                    raw=raw,
-                )
-            except Exception as exc:
-                if (
-                    attempt >= retries
-                    or getattr(exc, _NO_RETRY, False)
-                    or not is_transient(exc)
-                ):
-                    raise
-                attempt += 1
-                delay = backoff_delay(attempt, 0.5, 2.0)
-                _log.warning(
-                    "GET failed (%s, status %s); retry %d of %d in %.1f s",
-                    type(exc).__name__,
-                    error_status(exc),
-                    attempt,
-                    retries,
-                    delay,
-                )
-                time.sleep(delay)
+        return _transport.api_request(
+            self,
+            method,
+            path,
+            params=params,
+            json=json,
+            content=content,
+            files=files,
+            headers=headers,
+            raw=raw,
+            sleep=time.sleep,
+        )
 
     def _api_request_once(
         self,
@@ -365,86 +300,17 @@ class Bot:
         headers: dict[str, str],
         raw: bool,
     ) -> Any:
-        cost = 1
-        if (
-            method.upper() == "POST"
-            and path.endswith("/messages/forward")
-            and isinstance(json, Mapping)
-        ):
-            message_ids = json.get("message_ids")
-            if isinstance(message_ids, list):
-                cost = max(1, len(message_ids))
-        try:
-            access_token, generation = self._access_state()
-        except Exception as exc:
-            # A scheduled refresh is a write too: do not repeat it with the GET.
-            setattr(exc, _NO_RETRY, True)
-            raise
-        account = self._account_key(access_token)
-        self._rate_limits.acquire(method, path, cost=cost, account=account)
-        headers.update(
-            {
-                "Authorization": "Bearer " + access_token,
-                "X-Requested-With": "XMLHttpRequest",
-            }
-        )
-        response = self._client.request(
+        return _transport._api_request_once(
+            self,
             method,
-            self.base_url + path,
+            path,
             params=params,
             json=json,
             content=content,
             files=files,
-            follow_redirects=False,
             headers=headers,
+            raw=raw,
         )
-        self._rate_limits.observe(response, method, path, account=account)
-        if (
-            response.status_code == 401
-            and self._refresh_session is not None
-            and files is None
-            and not path.startswith("/api/v1/auth/")
-        ):
-            headers["Authorization"] = "Bearer " + self._refresh_after_401(
-                access_token, generation
-            )
-            self._rate_limits.acquire(method, path, cost=cost, account=account)
-            response = self._client.request(
-                method,
-                self.base_url + path,
-                params=params,
-                json=json,
-                content=content,
-                follow_redirects=False,
-                headers=headers,
-            )
-            self._rate_limits.observe(response, method, path, account=account)
-        if response.is_success and raw:
-            return response
-        try:
-            data = response.json() if response.content else None
-        except ValueError:
-            if response.is_success:
-                raise _InvalidJSON(response.content) from None
-            data = None
-        if not response.is_success:
-            detail = data.get("error", data) if isinstance(data, dict) else {}
-            if not isinstance(detail, dict):
-                detail = {}
-            raise _api_error(
-                response.status_code,
-                str(
-                    detail.get("detail")
-                    or detail.get("message")
-                    or detail.get("title")
-                    or "Request failed"
-                ),
-                code=detail.get("code"),
-                errors=detail.get("errors") or detail.get("violations"),
-                retry_after=response.headers.get("Retry-After"),
-                response=data,
-            )
-        return data
 
     def _refresh_after_401(self, rejected: str, generation: int) -> str:
         assert self._refresh_session is not None
@@ -465,67 +331,15 @@ class Bot:
         on_progress: Callable[[int, int], None] | None = None,
     ) -> UploadFinalizeResponse:
         """Upload bytes or a local file using the messenger's multipart-by-chunk protocol."""
-        import io
-
-        stream = io.BytesIO(source) if isinstance(source, bytes) else open(source, "rb")
-        try:
-            stream.seek(0, os.SEEK_END)
-            size = stream.tell()
-            stream.seek(0)
-            if not 0 < size <= 2 * 1024**3:
-                raise ValueError("file size must be between 1 byte and 2 GiB")
-            if filename is None and not isinstance(source, bytes):
-                filename = Path(source).name
-            mime = (
-                mime
-                or mimetypes.guess_type(filename or "")[0]
-                or "application/octet-stream"
-            )
-            part_size = 5 * 1024 * 1024
-            count = (size + part_size - 1) // part_size
-            initial = self.request(
-                "POST",
-                "/media/upload/init",
-                json={"mime": mime, "size": size, "totalParts": count},
-            )
-            if (
-                not isinstance(initial, dict)
-                or not isinstance(initial.get("uploadId"), str)
-                or not initial["uploadId"]
-            ):
-                raise ProtocolError("Invalid upload initialization response")
-            upload_id = _id(initial["uploadId"])
-            sent = 0
-            for index in range(count):
-                expected = min(part_size, size - sent)
-                part = stream.read(expected)
-                if len(part) != expected:
-                    raise OSError("file changed or could not be read during upload")
-                self.api_request(
-                    "PUT",
-                    f"/api/v1/messenger/media/upload/{upload_id}/part/{index}",
-                    content=part,
-                    headers={"Content-Type": "application/octet-stream"},
-                    raw=True,
-                )
-                sent += len(part)
-                if on_progress is not None:
-                    on_progress(sent, size)
-            body = dict(metadata or {})
-            if filename is not None:
-                body["filename"] = filename
-            result = self.request(
-                "POST", f"/media/upload/{upload_id}/finalize", json=body
-            )
-            if (
-                not isinstance(result, dict)
-                or not isinstance(result.get("fileId"), str)
-                or not result["fileId"]
-            ):
-                raise ProtocolError("Invalid upload finalization response")
-            return cast(UploadFinalizeResponse, result)
-        finally:
-            stream.close()
+        return _files.upload_file(
+            self,
+            source,
+            filename=filename,
+            mime=mime,
+            metadata=metadata,
+            on_progress=on_progress,
+            open_file=open,
+        )
 
     def send_file(
         self,
@@ -540,19 +354,17 @@ class Bot:
         metadata: Mapping[str, Any] | None = None,
         on_progress: Callable[[int, int], None] | None = None,
     ) -> SendResponse:
-        uploaded = self.upload_file(
+        return _files.send_file(
+            self,
+            chat_id,
             source,
+            text=text,
             filename=filename,
             mime=mime,
+            reply_to_id=reply_to_id,
+            client_message_id=client_message_id,
             metadata=metadata,
             on_progress=on_progress,
-        )
-        return self.send_message(
-            chat_id,
-            text,
-            reply_to_id=reply_to_id,
-            attachments=[uploaded["fileId"]],
-            client_message_id=client_message_id,
         )
 
     def send_photo(
@@ -568,30 +380,12 @@ class Bot:
         **kwargs: Any,
     ) -> SendResponse:
         """Send an image, optionally preparing a JPEG like the web client."""
-        if compress:
-            from .media import prepare_photo
-
-            original_name = filename or (
-                Path(source).name if not isinstance(source, bytes) else None
-            )
-            data, prepared_name, dimensions = prepare_photo(source)
-            is_gif = data.startswith((b"GIF87a", b"GIF89a"))
-            filename = (
-                original_name
-                if is_gif and original_name
-                else (
-                    Path(original_name).stem + ".jpg"
-                    if original_name
-                    else prepared_name
-                )
-            )
-            mime = "image/gif" if is_gif else "image/jpeg"
-            source = data
-            metadata = {**dimensions, **(metadata or {})}
-        return self.send_file(
+        return _files.send_photo(
+            self,
             chat_id,
             source,
-            text=caption,
+            caption=caption,
+            compress=compress,
             filename=filename,
             mime=mime,
             metadata=metadata,
@@ -608,64 +402,9 @@ class Bot:
         **kwargs: Any,
     ) -> SendResponse:
         """Send a video; optional compression requires the ffmpeg executable."""
-        if not compress:
-            return self.send_file(chat_id, source, text=caption, **kwargs)
-        import shutil
-        import subprocess
-        import tempfile
-
-        executable = shutil.which("ffmpeg")
-        if executable is None:
-            raise RuntimeError("Video compression requires ffmpeg in PATH")
-        if not isinstance(source, bytes) and not Path(source).is_file():
-            raise FileNotFoundError(source)
-        try:
-            with tempfile.TemporaryDirectory(prefix="itd-video-") as directory:
-                if isinstance(source, bytes):
-                    input_path = Path(directory) / "input"
-                    input_path.write_bytes(source)
-                else:
-                    input_path = Path(source).resolve()
-                output_path = Path(directory) / "video.mp4"
-                subprocess.run(
-                    [
-                        executable,
-                        "-nostdin",
-                        "-hide_banner",
-                        "-loglevel",
-                        "error",
-                        "-y",
-                        "-i",
-                        str(input_path),
-                        "-c:v",
-                        "libx264",
-                        "-crf",
-                        "28",
-                        "-preset",
-                        "medium",
-                        "-c:a",
-                        "aac",
-                        "-movflags",
-                        "+faststart",
-                        str(output_path),
-                    ],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE,
-                )
-                name = kwargs.pop("filename", None)
-                name = Path(name or input_path.name).stem + ".mp4"
-                kwargs.pop("mime", None)
-                return self.send_file(
-                    chat_id,
-                    output_path,
-                    text=caption,
-                    filename=name,
-                    mime="video/mp4",
-                    **kwargs,
-                )
-        except subprocess.CalledProcessError as exc:
-            raise RuntimeError("Video compression failed") from exc
+        return _files.send_video(
+            self, chat_id, source, caption=caption, compress=compress, **kwargs
+        )
 
     def send_music(
         self,
@@ -676,7 +415,7 @@ class Bot:
         **kwargs: Any,
     ) -> SendResponse:
         """Send an audio file without transcoding."""
-        return self.send_file(chat_id, source, text=caption, **kwargs)
+        return _files.send_music(self, chat_id, source, caption=caption, **kwargs)
 
     def send_audio(
         self,
@@ -686,7 +425,7 @@ class Bot:
         caption: str = "",
         **kwargs: Any,
     ) -> SendResponse:
-        return self.send_music(chat_id, source, caption=caption, **kwargs)
+        return _files.send_audio(self, chat_id, source, caption=caption, **kwargs)
 
     def get_user(self, user_id_or_username: str) -> User:
         """Fetch a user profile by ID or username; optional @ is accepted."""
@@ -730,35 +469,9 @@ class Bot:
 
     def download_banner(self, url: str, destination: str | os.PathLike) -> Path:
         """Download a profile banner from ITD's CDN without sending authentication."""
-        parsed = urlsplit(url)
-        if (
-            parsed.scheme != "https"
-            or parsed.hostname != "cdn.xn--d1ah4a.com"
-            or parsed.username is not None
-            or parsed.password is not None
-            or parsed.port not in (None, 443)
-            or parsed.fragment
-        ):
-            raise ValueError("Banner URL must use the ITD CDN over HTTPS")
-        target = Path(destination)
-        with httpx.Client(
-            follow_redirects=False, timeout=30.0, trust_env=False
-        ) as client:
-            self._rate_limits.acquire("GET", parsed.path)
-            with client.stream("GET", url) as response:
-                if response.status_code == 429:
-                    response.read()
-                    self._rate_limits.observe(response, "GET", parsed.path)
-                response.raise_for_status()
-                with target.open("xb") as output:
-                    try:
-                        for chunk in response.iter_bytes():
-                            output.write(chunk)
-                    except BaseException:
-                        output.close()
-                        target.unlink(missing_ok=True)
-                        raise
-        return target
+        return _files.download_banner(
+            self, url, destination, client_factory=httpx.Client
+        )
 
     def get_chats(self, *, limit: int | None = None, before: str | None = None) -> dict:
         return self.request(
@@ -1108,15 +821,7 @@ class Bot:
 
     def create_file_session(self) -> None:
         """Create the short-lived browser file cookie in this client's cookie jar."""
-        origin = urlsplit(self.base_url)
-        response = self.api_request(
-            "POST",
-            "/api/v1/messenger/browser-file-session",
-            raw=True,
-            headers={"Origin": f"{origin.scheme}://{origin.netloc}"},
-        )
-        if response.status_code != 204:
-            raise ProtocolError("Unexpected file session response")
+        return _files.create_file_session(self)
 
     def download_file(
         self,
@@ -1126,157 +831,27 @@ class Bot:
         destination: str | os.PathLike | None = None,
     ) -> bytes | Path:
         """Resolve a chat attachment and download it; destination streams to a new file."""
-        links = self.get_file_links(chat_id, [file_id])
-        if not isinstance(links, dict) or not isinstance(links.get("links"), list):
-            raise ProtocolError("Invalid file links response")
-        link = next(
-            (
-                entry.get("url")
-                for entry in links["links"]
-                if isinstance(entry, dict) and entry.get("fileId") == file_id
-            ),
-            None,
-        )
-        if not isinstance(link, str):
-            raise ProtocolError("No link for requested file")
-        base = urlsplit(self.base_url)
-        resolved = urlsplit(urljoin(self.base_url + "/", link))
-        if (
-            resolved.scheme != base.scheme
-            or resolved.netloc != base.netloc
-            or resolved.username
-            or resolved.password
-            or resolved.fragment
-            or not re.fullmatch(
-                r"/v1/chat-files/[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}",
-                resolved.path,
-            )
-        ):
-            raise ProtocolError("Unsupported or unexpected file URL")
-        self.create_file_session()
-        access_token, generation = self._access_state()
-        headers = {
-            "Authorization": "Bearer " + access_token,
-            "X-Requested-With": "XMLHttpRequest",
-        }
-        for attempt in range(2):
-            self._rate_limits.acquire("GET", resolved.path)
-            with self._client.stream(
-                "GET", resolved.geturl(), headers=headers, follow_redirects=False
-            ) as response:
-                if (
-                    response.status_code == 401
-                    and attempt == 0
-                    and self._refresh_session is not None
-                ):
-                    response.close()
-                    self._refresh_session.refresh_after_401(access_token, generation)
-                    self.create_file_session()
-                    headers["Authorization"] = "Bearer " + self._access_token()
-                    continue
-                if response.status_code == 429:
-                    response.read()
-                    self._rate_limits.observe(response, "GET", resolved.path)
-                return self._read_download(response, destination)
-        raise ProtocolError("File download failed")
+        return _files.download_file(self, chat_id, file_id, destination=destination)
 
     def _read_download(
         self, response: httpx.Response, destination: str | os.PathLike | None
     ) -> bytes | Path:
-        if not response.is_success:
-            response.read()
-            try:
-                data = response.json()
-            except ValueError:
-                data = None
-            detail = data.get("error", data) if isinstance(data, dict) else {}
-            if not isinstance(detail, dict):
-                detail = {}
-            raise _api_error(
-                response.status_code,
-                str(
-                    detail.get("detail")
-                    or detail.get("message")
-                    or "File download failed"
-                ),
-                code=detail.get("code"),
-                errors=detail.get("errors"),
-                retry_after=response.headers.get("Retry-After"),
-                response=data,
-            )
-        if destination is None:
-            return response.read()
-        target = Path(destination)
-
-        with target.open("xb") as output:
-            try:
-                for chunk in response.iter_bytes():
-                    output.write(chunk)
-            except BaseException:
-                output.close()
-                target.unlink(missing_ok=True)
-                raise
-        return target
+        return _files._read_download(self, response, destination)
 
     def get_updates(self, since: int, *, limit: int | None = None) -> UpdatesResponse:
-        if isinstance(since, bool) or not isinstance(since, int) or since < 0:
-            raise ValueError("since must be a non-negative integer")
-        params = {"since": since, "capabilities": "chat_settings", "manual_unread": 1}
-        if limit is not None:
-            params["limit"] = limit
-        try:
-            data = self.request("GET", "/updates", params=params)
-        except _InvalidJSON as exc:
-            if self._on_protocol_error == "raise":
-                raise
-            self._remember_protocol_error(exc.raw)
-            return self._empty_updates(since)
-        if isinstance(data, dict) and data.get("reset_required") is True:
-            raise ResetRequired(data)
-        if (
-            not isinstance(data, dict)
-            or not isinstance(data.get("events"), list)
-            or not isinstance(data.get("reset_required"), bool)
-            or isinstance(data.get("next_event_seq"), bool)
-            or not isinstance(data.get("next_event_seq"), int)
-            or data["next_event_seq"] < 0
-        ):
-            if self._on_protocol_error == "skip":
-                self._remember_protocol_error(data)
-                return self._empty_updates(since)
-            raise ProtocolError("Invalid updates response")
-        if data["next_event_seq"] < since:
-            if self._on_protocol_error == "skip":
-                self._remember_protocol_error(data)
-                return self._empty_updates(since)
-            raise ProtocolError("Updates cursor moved backwards without a reset")
-        events = []
-        for event in data["events"]:
-            if isinstance(event, dict) and isinstance(event.get("type"), str):
-                events.append(event)
-            elif self._on_protocol_error == "skip":
-                self._remember_protocol_error(event)
-            else:
-                raise ProtocolError("Invalid updates response")
-        if len(events) != len(data["events"]):
-            data = {**data, "events": events}
-        return cast(UpdatesResponse, data)
+        return _updates.get_updates(self, since, limit=limit)
 
     @staticmethod
     def _empty_updates(since: int) -> UpdatesResponse:
-        return {"events": [], "reset_required": False, "next_event_seq": since}
+        return _updates._empty_updates(since)
 
     def _remember_protocol_error(self, fragment: Any) -> None:
-        snapshot = deepcopy(fragment)
-        with self._protocol_lock:
-            self._protocol_errors.append(snapshot)
-        _log.warning("Skipped invalid updates fragment; inspect Bot.protocol_errors")
+        return _updates._remember_protocol_error(self, fragment)
 
     @property
     def protocol_errors(self) -> tuple[Any, ...]:
         """Copies of the last 32 skipped raw fragments; may contain private data."""
-        with self._protocol_lock:
-            return deepcopy(tuple(self._protocol_errors))
+        return _updates.protocol_errors(self)
 
     def websocket_events(self, *, stop: threading.Event | None = None):
         """Yield live frames until disconnected; use get_updates to recover gaps.
@@ -1286,110 +861,14 @@ class Bot:
         ``stop`` interrupts receiving and backoff; an active HTTP refresh waits
         for the configured HTTP timeout. Use polling to recover event gaps.
         """
-        self._require_websocket()
-        for attempt in range(_WS_AUTH_RETRIES + 1):
-            access_token, generation = self._access_state()
-            try:
-                yield from self._websocket_events_once(access_token, stop=stop)
-                return
-            except _WebSocketClosed as exc:
-                if (
-                    exc.code not in {4001, 4003}
-                    or self._refresh_session is None
-                    or attempt >= _WS_AUTH_RETRIES
-                ):
-                    raise
-                _log.warning(
-                    "WebSocket authorization closed (code %d); retry %d of %d",
-                    exc.code,
-                    attempt + 1,
-                    _WS_AUTH_RETRIES,
-                )
-                if (stop is not None and stop.is_set()) or pause(stop, 2.0**attempt):
-                    return
-                self._refresh_after_401(access_token, generation)
+        yield from _websocket.websocket_events(self, stop=stop, pause_wait=pause)
 
     def _websocket_events_once(
         self, access_token: str, *, stop: threading.Event | None
     ) -> Iterator[UpdateEvent]:
-        import websocket
-
-        parts = urlsplit(self.base_url)
-        scheme = "wss" if parts.scheme == "https" else "ws"
-        url = f"{scheme}://{parts.netloc}{parts.path}/api/v1/messenger/ws?capabilities=chat_settings_v2"
-        self._rate_limits.acquire("GET", "/api/v1/messenger/ws")
-        try:
-            conn = websocket.create_connection(
-                url,
-                timeout=5,
-                redirect_limit=0,
-                subprotocols=["itd.messenger.v1", "bearer." + access_token],
-                origin=f"{parts.scheme}://{parts.netloc}",
-            )
-        except websocket.WebSocketBadStatusException as exc:
-            if exc.status_code == 429:
-                self._rate_limits.observe(
-                    httpx.Response(
-                        429,
-                        headers=exc.resp_headers or {},
-                        content=exc.resp_body or b"",
-                    ),
-                    "GET",
-                    "/api/v1/messenger/ws",
-                )
-            raise
-        try:
-            handshake = conn.handshake_response
-            if handshake is None or handshake.status != 101:
-                raise ProtocolError("WebSocket handshake failed")
-            last_ping = last_frame = time.monotonic()
-            while stop is None or not stop.is_set():
-                now = time.monotonic()
-                if now - last_frame >= 15:
-                    raise ProtocolError("WebSocket heartbeat timed out")
-                if now - last_ping >= 5:
-                    conn.send("ping")
-                    last_ping = now
-                timeout = min(5, max(0.1, 5 - (now - last_ping)))
-                conn.settimeout(timeout if stop is None else min(timeout, 1.0))
-                try:
-                    receive = getattr(conn, "recv_data", None)
-                    if callable(receive):
-                        opcode, frame = receive(control_frame=True)
-                        if opcode == websocket.ABNF.OPCODE_CLOSE:
-                            code = (
-                                int.from_bytes(frame[:2], "big")
-                                if isinstance(frame, (bytes, bytearray))
-                                and len(frame) >= 2
-                                else None
-                            )
-                            raise _WebSocketClosed(code)
-                        if opcode in {
-                            websocket.ABNF.OPCODE_PING,
-                            websocket.ABNF.OPCODE_PONG,
-                        }:
-                            last_frame = time.monotonic()
-                            continue
-                    else:
-                        frame = conn.recv()
-                except websocket.WebSocketTimeoutException:
-                    continue
-                if frame in (None, "", b""):
-                    raise ProtocolError("WebSocket closed")
-                last_frame = time.monotonic()
-                if frame in ("pong", b"pong"):
-                    continue
-                try:
-                    event = jsonlib.loads(frame)
-                except (ValueError, UnicodeDecodeError, TypeError) as exc:
-                    raise ProtocolError("Invalid WebSocket frame") from exc
-                if not isinstance(event, dict) or not isinstance(
-                    event.get("type"), str
-                ):
-                    raise ProtocolError("Invalid WebSocket event")
-                yield cast(UpdateEvent, event)
-        finally:
-            conn.close()
+        yield from _websocket._websocket_events_once(
+            self, access_token, stop=stop, monotonic=time.monotonic
+        )
 
     def poll(
         self,
@@ -1440,295 +919,29 @@ class Bot:
 
         Set ``stop`` to finish the current batch, checkpoint and return.
         """
-        if interval <= 0:
-            raise ValueError("interval must be positive")
-        if not isinstance(chat_queues, bool):
-            raise ValueError("chat_queues must be a boolean")
-        if (
-            isinstance(chat_queue_size, bool)
-            or not isinstance(chat_queue_size, int)
-            or chat_queue_size < 1
-        ):
-            raise ValueError("chat_queue_size must be a positive integer")
-        if min_fetch_interval < 0:
-            raise ValueError("min_fetch_interval must not be negative")
-        if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
-            raise ValueError("workers must be a positive integer")
-        if retry_initial_delay <= 0:
-            raise ValueError("retry_initial_delay must be positive")
-        if retry_max_delay < retry_initial_delay:
-            raise ValueError("retry_max_delay must not be below retry_initial_delay")
-        if (
-            isinstance(handler_retries, bool)
-            or not isinstance(handler_retries, int)
-            or handler_retries < 0
-        ):
-            raise ValueError("handler_retries must be a non-negative integer")
-        if websocket:
-            self._require_websocket()
-        run = _EventRunner(
+        return _updates.poll(
+            self,
+            since,
             handler,
-            on_error,
-            handler_retries,
-            retry_initial_delay,
-            retry_max_delay,
-            stop,
+            interval=interval,
+            on_checkpoint=on_checkpoint,
+            websocket=websocket,
+            workers=workers,
+            min_fetch_interval=min_fetch_interval,
+            retry_initial_delay=retry_initial_delay,
+            retry_max_delay=retry_max_delay,
+            on_error=on_error,
+            handler_retries=handler_retries,
+            stop=stop,
+            chat_queues=chat_queues,
+            chat_queue_size=chat_queue_size,
+            pause_wait=pause,
+            monotonic=time.monotonic,
         )
-        wake = threading.Event()
-        ws_stop = threading.Event()
-        ws_thread = None
-        if websocket:
-            ws_thread = threading.Thread(
-                target=self._websocket_wakeups,
-                args=(wake, ws_stop),
-                name="itd-ws-wakeup",
-                daemon=True,
-            )
-            ws_thread.start()
-        executor = (
-            ThreadPoolExecutor(workers, "itd-handler")
-            if workers > 1 and not chat_queues
-            else None
-        )
-        last_fetch = None
-        failures = 0
-        clean = False
-        try:
-            if chat_queues:
-                _poll_chat_queues(
-                    self.get_updates,
-                    run,
-                    since,
-                    checkpoint=on_checkpoint,
-                    workers=workers,
-                    capacity=chat_queue_size,
-                    interval=interval,
-                    min_fetch_interval=min_fetch_interval,
-                    websocket=websocket,
-                    wake=wake,
-                    stop=stop,
-                    retry_initial=retry_initial_delay,
-                    retry_max=retry_max_delay,
-                    prepare=run.for_batch,
-                )
-                clean = True
-                return
-            while True:
-                if stop is not None and stop.is_set():
-                    clean = True
-                    return
-                if websocket and last_fetch is not None:
-                    gap = last_fetch + min_fetch_interval - time.monotonic()
-                    if gap > 0 and pause(stop, gap):
-                        clean = True
-                        return
-                wake.clear()
-                last_fetch = time.monotonic()
-                try:
-                    batch = self.get_updates(since)
-                except RateLimitError as exc:
-                    if pause(stop, min(exc.retry_after_seconds, 60)):
-                        clean = True
-                        return
-                    continue
-                except Exception as exc:
-                    if not is_transient(exc):
-                        raise
-                    failures += 1
-                    delay = backoff_delay(
-                        failures, retry_initial_delay, retry_max_delay
-                    )
-                    _log.warning(
-                        "Updates request failed (%s, status %s); retry %d in %.1f s",
-                        type(exc).__name__,
-                        error_status(exc),
-                        failures,
-                        delay,
-                    )
-                    if pause(stop, delay):
-                        clean = True
-                        return
-                    continue
-                events = batch["events"]
-                batch_run = run.for_batch(events)
-                try:
-                    if executor is None:
-                        for event in events:
-                            batch_run(event)
-                    else:
-                        _run_by_chat(executor, events, batch_run)
-                except Exception as exc:
-                    if not is_redeliver(exc):
-                        raise
-                    # Failed before a handler started (read mark): ask for the
-                    # same batch again instead of losing the event.
-                    failures += 1
-                    delay = backoff_delay(
-                        failures, retry_initial_delay, retry_max_delay
-                    )
-                    _log.warning(
-                        "Read mark failed (%s, status %s); fetching the batch "
-                        "again, retry %d in %.1f s",
-                        type(exc).__name__,
-                        error_status(exc),
-                        failures,
-                        delay,
-                    )
-                    if pause(stop, delay):
-                        clean = True
-                        return
-                    continue
-                failures = 0
-                next_seq = batch["next_event_seq"]
-                if on_checkpoint is not None:
-                    on_checkpoint(next_seq)
-                advanced = next_seq > since
-                since = next_seq
-                if events and advanced:
-                    continue
-                if websocket:
-                    wait_for_wake(wake, stop, interval)
-                elif pause(stop, interval):
-                    clean = True
-                    return
-        finally:
-            ws_stop.set()
-            if executor is not None:
-                executor.shutdown(wait=clean, cancel_futures=not clean)
-            if clean and ws_thread is not None:
-                ws_thread.join(timeout=5.0)
 
     @staticmethod
     def _require_websocket() -> None:
-        try:
-            import websocket  # noqa: F401
-        except ImportError as exc:
-            raise RuntimeError(
-                'Install the websocket extra: pip install "itd-chatbot-sdk[websocket]"'
-            ) from exc
+        return _websocket._require_websocket()
 
     def _websocket_wakeups(self, wake: threading.Event, stop: threading.Event) -> None:
-        backoff = 1.0
-        while not stop.is_set():
-            try:
-                for _ in self.websocket_events(stop=stop):
-                    wake.set()
-                    backoff = 1.0
-            except Exception as exc:
-                _log.warning("WebSocket wake-up stream failed: %s", type(exc).__name__)
-            # A reconnect can miss frames, so let /updates look for a gap.
-            wake.set()
-            if stop.wait(backoff):
-                return
-            backoff = min(backoff * 2, 30.0)
-
-
-class _EventRunner:
-    """Apply the handler-error policy to one event at a time."""
-
-    def __init__(
-        self,
-        handler: Callable[[UpdateEvent], None],
-        on_error: Callable[[Exception, UpdateEvent], ErrorAction | None] | None,
-        retries: int,
-        initial: float,
-        maximum: float,
-        stop: threading.Event | None,
-    ) -> None:
-        self._handler, self._on_error, self._retries = handler, on_error, retries
-        self._initial, self._maximum, self._stop = initial, maximum, stop
-
-    def for_batch(self, events: list[UpdateEvent]) -> _EventRunner:
-        if not isinstance(self._handler, _BatchHandler):
-            return self
-        return _EventRunner(
-            self._handler.for_batch(events),
-            self._on_error,
-            self._retries,
-            self._initial,
-            self._maximum,
-            self._stop,
-        )
-
-    def __call__(self, event: UpdateEvent) -> None:
-        attempt = 0
-        while True:
-            try:
-                self._handler(event)
-                return
-            except Exception as exc:
-                if is_redeliver(exc):
-                    raise
-                action = self._decide(exc, event)
-                if action is ErrorAction.STOP:
-                    raise
-                if action is ErrorAction.RETRY and attempt < self._retries:
-                    attempt += 1
-                    delay = backoff_delay(attempt, self._initial, self._maximum)
-                    _log.warning(
-                        "Handler failed (%s) for event type %s; retry %d of %d in %.1f s",
-                        type(exc).__name__,
-                        _event_type(event),
-                        attempt,
-                        self._retries,
-                        delay,
-                    )
-                    # A stop request only shortens the pause; the retry still runs.
-                    pause(self._stop, delay)
-                    continue
-                _log.error(
-                    "Handler failed (%s) for event type %s; event skipped",
-                    type(exc).__name__,
-                    _event_type(event),
-                )
-                return
-
-    def _decide(self, exc: Exception, event: UpdateEvent) -> ErrorAction | None:
-        if self._on_error is None:
-            return None
-        action = self._on_error(exc, event)
-        if action is not None and not isinstance(action, ErrorAction):
-            raise TypeError("on_error must return an ErrorAction or None")
-        return action
-
-
-def _event_type(event: UpdateEvent) -> str:
-    kind = event.get("type")
-    return kind[:64] if isinstance(kind, str) else "?"
-
-
-def _run_by_chat(
-    executor: ThreadPoolExecutor,
-    events: list[UpdateEvent],
-    handler: Callable[[UpdateEvent], None],
-) -> None:
-    """Run handlers in parallel across chats, in order within each chat.
-
-    If one handler raises, handlers that already started finish, no new event
-    starts, and the first error is raised.
-    """
-    groups: dict[str | None, list[UpdateEvent]] = {}
-    for event in events:
-        chat_id = event.get("chat_id")
-        key = chat_id if isinstance(chat_id, str) else None
-        groups.setdefault(key, []).append(event)
-    if len(groups) <= 1:
-        for event in events:
-            handler(event)
-        return
-    failed = threading.Event()
-
-    def run(group: list[UpdateEvent]) -> None:
-        for event in group:
-            if failed.is_set():
-                return
-            try:
-                handler(event)
-            except BaseException:
-                failed.set()
-                raise
-
-    futures = [executor.submit(run, group) for group in groups.values()]
-    wait(futures)
-    for future in futures:
-        future.result()
+        return _websocket._websocket_wakeups(self, wake, stop)
