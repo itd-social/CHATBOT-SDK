@@ -19,7 +19,8 @@ import httpx
 
 from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
-from .errors import APIError, ProtocolError, RateLimitError, ResetRequired
+from .errors import APIError as APIError
+from .errors import ProtocolError, RateLimitError, ResetRequired, _api_error
 from .polling import (
     ErrorAction,
     backoff_delay,
@@ -376,7 +377,7 @@ class Bot:
             detail = data.get("error", data) if isinstance(data, dict) else {}
             if not isinstance(detail, dict):
                 detail = {}
-            raise APIError(
+            raise _api_error(
                 response.status_code,
                 str(
                     detail.get("detail")
@@ -387,6 +388,7 @@ class Bot:
                 code=detail.get("code"),
                 errors=detail.get("errors") or detail.get("violations"),
                 retry_after=response.headers.get("Retry-After"),
+                response=data,
             )
         return data
 
@@ -1130,13 +1132,13 @@ class Bot:
         if not response.is_success:
             response.read()
             try:
-                detail = response.json()
+                data = response.json()
             except ValueError:
-                detail = {}
-            detail = detail.get("error", detail) if isinstance(detail, dict) else {}
+                data = None
+            detail = data.get("error", data) if isinstance(data, dict) else {}
             if not isinstance(detail, dict):
                 detail = {}
-            raise APIError(
+            raise _api_error(
                 response.status_code,
                 str(
                     detail.get("detail")
@@ -1146,6 +1148,7 @@ class Bot:
                 code=detail.get("code"),
                 errors=detail.get("errors"),
                 retry_after=response.headers.get("Retry-After"),
+                response=data,
             )
         if destination is None:
             return response.read()
