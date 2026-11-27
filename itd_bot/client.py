@@ -9,8 +9,10 @@ import re
 import threading
 import time
 import uuid
+from collections import deque
 from collections.abc import Callable, Iterator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, cast
 from urllib.parse import quote, urljoin, urlsplit
@@ -21,7 +23,13 @@ from .actions import ChatAction, ChatActionHandle, ProgressSource, _action_body
 from .auth import RefreshSession, _claims
 from .chat_queues import _poll_chat_queues
 from .errors import APIError as APIError
-from .errors import ProtocolError, RateLimitError, ResetRequired, _api_error
+from .errors import (
+    ProtocolError,
+    RateLimitError,
+    ResetRequired,
+    _api_error,
+    _InvalidJSON,
+)
 from .message_ids import _uuid7
 from .polling import (
     ErrorAction,
@@ -102,7 +110,16 @@ class Bot:
         session_path: str | os.PathLike | None = ".itd-session.json",
         limiter: RateLimiter | None = None,
         get_retries: int = 2,
+        on_protocol_error: str = "raise",
     ):
+        if not isinstance(on_protocol_error, str) or on_protocol_error not in {
+            "raise",
+            "skip",
+        }:
+            raise ValueError("on_protocol_error must be 'raise' or 'skip'")
+        self._on_protocol_error = on_protocol_error
+        self._protocol_errors: deque[Any] = deque(maxlen=32)
+        self._protocol_lock = threading.Lock()
         if token is None and refresh_token is None:
             raise ValueError("A bearer token or refresh token is required")
         if token is not None and (not token or "\n" in token or "\r" in token):
@@ -383,7 +400,7 @@ class Bot:
             data = response.json() if response.content else None
         except ValueError:
             if response.is_success:
-                raise ProtocolError("Expected JSON response") from None
+                raise _InvalidJSON(response.content) from None
             data = None
         if not response.is_success:
             detail = data.get("error", data) if isinstance(data, dict) else {}
@@ -1182,7 +1199,15 @@ class Bot:
         params = {"since": since, "capabilities": "chat_settings", "manual_unread": 1}
         if limit is not None:
             params["limit"] = limit
-        data = self.request("GET", "/updates", params=params)
+        try:
+            data = self.request("GET", "/updates", params=params)
+        except _InvalidJSON as exc:
+            if self._on_protocol_error == "raise":
+                raise
+            self._remember_protocol_error(exc.raw)
+            return self._empty_updates(since)
+        if isinstance(data, dict) and data.get("reset_required") is True:
+            raise ResetRequired(data)
         if (
             not isinstance(data, dict)
             or not isinstance(data.get("events"), list)
@@ -1190,17 +1215,43 @@ class Bot:
             or isinstance(data.get("next_event_seq"), bool)
             or not isinstance(data.get("next_event_seq"), int)
             or data["next_event_seq"] < 0
-            or any(
-                not isinstance(e, dict) or not isinstance(e.get("type"), str)
-                for e in data["events"]
-            )
         ):
+            if self._on_protocol_error == "skip":
+                self._remember_protocol_error(data)
+                return self._empty_updates(since)
             raise ProtocolError("Invalid updates response")
-        if data["reset_required"]:
-            raise ResetRequired(data)
         if data["next_event_seq"] < since:
+            if self._on_protocol_error == "skip":
+                self._remember_protocol_error(data)
+                return self._empty_updates(since)
             raise ProtocolError("Updates cursor moved backwards without a reset")
+        events = []
+        for event in data["events"]:
+            if isinstance(event, dict) and isinstance(event.get("type"), str):
+                events.append(event)
+            elif self._on_protocol_error == "skip":
+                self._remember_protocol_error(event)
+            else:
+                raise ProtocolError("Invalid updates response")
+        if len(events) != len(data["events"]):
+            data = {**data, "events": events}
         return cast(UpdatesResponse, data)
+
+    @staticmethod
+    def _empty_updates(since: int) -> UpdatesResponse:
+        return {"events": [], "reset_required": False, "next_event_seq": since}
+
+    def _remember_protocol_error(self, fragment: Any) -> None:
+        snapshot = deepcopy(fragment)
+        with self._protocol_lock:
+            self._protocol_errors.append(snapshot)
+        _log.warning("Skipped invalid updates fragment; inspect Bot.protocol_errors")
+
+    @property
+    def protocol_errors(self) -> tuple[Any, ...]:
+        """Copies of the last 32 skipped raw fragments; may contain private data."""
+        with self._protocol_lock:
+            return deepcopy(tuple(self._protocol_errors))
 
     def websocket_events(self, *, stop: threading.Event | None = None):
         """Yield live frames until disconnected; use get_updates to recover gaps.

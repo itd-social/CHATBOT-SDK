@@ -3,6 +3,7 @@ from .client import APIError, Bot, ProtocolError, ResetRequired
 from .context import Attachment, EventContext, MessageContext, SentMessage
 from .dedup import DedupStore, MemoryDedupStore
 from .dispatcher import CommandContext, Dispatcher
+from .enums import ChatType, EntityType
 from .errors import (
     BlockedError,
     MessagesClosedError,
@@ -34,6 +35,8 @@ from .user import User
 
 __all__ = [
     "Bot",
+    "ChatType",
+    "EntityType",
     "ChatAction",
     "ChatActionHandle",
     "User",

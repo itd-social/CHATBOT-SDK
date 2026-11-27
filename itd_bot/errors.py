@@ -95,6 +95,12 @@ class ProtocolError(Exception):
     """The server returned a response incompatible with the observed protocol."""
 
 
+class _InvalidJSON(ProtocolError):
+    def __init__(self, raw: bytes) -> None:
+        super().__init__("Expected JSON response")
+        self.raw = raw
+
+
 class ResetRequired(ProtocolError):
     """The server cannot replay all requested events; reconcile application state."""
 
