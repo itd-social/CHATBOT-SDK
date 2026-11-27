@@ -40,7 +40,9 @@ class _ChatQueues:
         self._executor = ThreadPoolExecutor(workers, "itd-chat")
         self._condition = threading.Condition()
         self._ledger: deque[_Entry] = deque()
-        self._jobs: dict[str | None, deque[tuple[_Entry, UpdateEvent]]] = {}
+        self._jobs: dict[
+            str | None, deque[tuple[_Entry, UpdateEvent, Callable[[UpdateEvent], None]]]
+        ] = {}
         self._counts: dict[str | None, int] = {}
         self._active: set[str | None] = set()
         self._failure: BaseException | None = None
@@ -50,9 +52,9 @@ class _ChatQueues:
         with self._condition:
             if self._closed or self._failure is not None:
                 return
-            entry, event = self._jobs[key].popleft()
+            entry, event, handler = self._jobs[key].popleft()
         try:
-            self._handler(event)
+            handler(event)
         except BaseException as exc:
             with self._condition:
                 if self._failure is None:
@@ -90,7 +92,12 @@ class _ChatQueues:
         if raise_errors and failure is not None:
             raise failure
 
-    def submit(self, batch: UpdatesResponse, since: int) -> None:
+    def submit(
+        self,
+        batch: UpdatesResponse,
+        since: int,
+        handler: Callable[[UpdateEvent], None] | None = None,
+    ) -> None:
         events, next_seq = batch["events"], batch["next_event_seq"]
         previous = since
         for event in events:
@@ -109,12 +116,16 @@ class _ChatQueues:
         for event in events:
             chat_id = event.get("chat_id")
             key = chat_id if isinstance(chat_id, str) else None
-            self._enqueue(_Entry(event["event_seq"]), event, key)
+            self._enqueue(_Entry(event["event_seq"]), event, key, handler)
         if next_seq > since:
             self._enqueue(_Entry(next_seq, done=True), None, None)
 
     def _enqueue(
-        self, entry: _Entry, event: UpdateEvent | None, key: str | None
+        self,
+        entry: _Entry,
+        event: UpdateEvent | None,
+        key: str | None,
+        handler: Callable[[UpdateEvent], None] | None = None,
     ) -> None:
         while True:
             self.checkpoint()
@@ -126,7 +137,13 @@ class _ChatQueues:
                 ):
                     self._ledger.append(entry)
                     if event is not None:
-                        self._jobs.setdefault(key, deque()).append((entry, event))
+                        self._jobs.setdefault(key, deque()).append(
+                            (
+                                entry,
+                                event,
+                                self._handler if handler is None else handler,
+                            )
+                        )
                         self._counts[key] = self._counts.get(key, 0) + 1
                         if key not in self._active:
                             self._active.add(key)
@@ -186,6 +203,7 @@ def _poll_chat_queues(
     stop: threading.Event | None,
     retry_initial: float,
     retry_max: float,
+    prepare: Callable[[list[UpdateEvent]], Callable[[UpdateEvent], None]] | None = None,
 ) -> None:
     queues = _ChatQueues(handler, checkpoint, since, workers, capacity)
     fetch_failures = read_failures = 0
@@ -231,7 +249,9 @@ def _poll_chat_queues(
                     queues.wait(delay, stop)
                     continue
                 fetch_failures = 0
-                queues.submit(batch, since)
+                queues.submit(
+                    batch, since, prepare(batch["events"]) if prepare else None
+                )
                 queues.checkpoint()
                 advanced = batch["next_event_seq"] > since
                 since = batch["next_event_seq"]

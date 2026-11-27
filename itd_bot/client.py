@@ -24,6 +24,7 @@ from .errors import APIError as APIError
 from .errors import ProtocolError, RateLimitError, ResetRequired, _api_error
 from .polling import (
     ErrorAction,
+    _BatchHandler,
     backoff_delay,
     error_status,
     is_redeliver,
@@ -1381,6 +1382,7 @@ class Bot:
                     stop=stop,
                     retry_initial=retry_initial_delay,
                     retry_max=retry_max_delay,
+                    prepare=run.for_batch,
                 )
                 clean = True
                 return
@@ -1421,12 +1423,13 @@ class Bot:
                         return
                     continue
                 events = batch["events"]
+                batch_run = run.for_batch(events)
                 try:
                     if executor is None:
                         for event in events:
-                            run(event)
+                            batch_run(event)
                     else:
-                        _run_by_chat(executor, events, run)
+                        _run_by_chat(executor, events, batch_run)
                 except Exception as exc:
                     if not is_redeliver(exc):
                         raise
@@ -1507,6 +1510,18 @@ class _EventRunner:
     ) -> None:
         self._handler, self._on_error, self._retries = handler, on_error, retries
         self._initial, self._maximum, self._stop = initial, maximum, stop
+
+    def for_batch(self, events: list[UpdateEvent]) -> _EventRunner:
+        if not isinstance(self._handler, _BatchHandler):
+            return self
+        return _EventRunner(
+            self._handler.for_batch(events),
+            self._on_error,
+            self._retries,
+            self._initial,
+            self._maximum,
+            self._stop,
+        )
 
     def __call__(self, event: UpdateEvent) -> None:
         attempt = 0

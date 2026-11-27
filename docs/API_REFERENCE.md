@@ -132,6 +132,8 @@ Dispatcher(bot, *, self_user_id, username=None, auto_typing=True,
 Dispatcher.from_bot(bot)
 ```
 
+`read_mode="batch"` отмечает последнее входящее сообщение каждого чата один раз за пакет, до первого обработчика этого чата. Значение по умолчанию остаётся `"blocking"`. Сравнение с `background` и `off` — в [бюджете запросов](REQUEST_BUDGET.md).
+
 | Что | Описание |
 |---|---|
 | `command(name)`, `message()`, `photo()`, `reaction()`, `edited()`, `deleted()` | Регистрация обработчиков с контекстом |
