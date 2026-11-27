@@ -9,7 +9,7 @@ import re
 import threading
 import time
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Any, cast
@@ -47,6 +47,13 @@ from .user import User
 
 _log = logging.getLogger(__name__)
 _NO_RETRY = "_itd_no_retry"
+_WS_AUTH_RETRIES = 3
+
+
+class _WebSocketClosed(ProtocolError):
+    def __init__(self, code: int | None) -> None:
+        super().__init__("WebSocket closed")
+        self.code = code
 
 
 def _send_body(
@@ -1198,19 +1205,42 @@ class Bot:
     def websocket_events(self, *, stop: threading.Event | None = None):
         """Yield live frames until disconnected; use get_updates to recover gaps.
 
-        When ``stop`` is set, the generator closes the connection and returns
-        within about a second.
+        Close codes 4001/4003 refresh an available session and reconnect, at most
+        three times with delays of 1, 2 and 4 seconds. Other failures propagate.
+        ``stop`` interrupts receiving and backoff; an active HTTP refresh waits
+        for the configured HTTP timeout. Use polling to recover event gaps.
         """
-        try:
-            import websocket
-        except ImportError as exc:
-            raise RuntimeError(
-                'Install the websocket extra: pip install "itd-chatbot-sdk[websocket]"'
-            ) from exc
+        self._require_websocket()
+        for attempt in range(_WS_AUTH_RETRIES + 1):
+            access_token, generation = self._access_state()
+            try:
+                yield from self._websocket_events_once(access_token, stop=stop)
+                return
+            except _WebSocketClosed as exc:
+                if (
+                    exc.code not in {4001, 4003}
+                    or self._refresh_session is None
+                    or attempt >= _WS_AUTH_RETRIES
+                ):
+                    raise
+                _log.warning(
+                    "WebSocket authorization closed (code %d); retry %d of %d",
+                    exc.code,
+                    attempt + 1,
+                    _WS_AUTH_RETRIES,
+                )
+                if (stop is not None and stop.is_set()) or pause(stop, 2.0**attempt):
+                    return
+                self._refresh_after_401(access_token, generation)
+
+    def _websocket_events_once(
+        self, access_token: str, *, stop: threading.Event | None
+    ) -> Iterator[UpdateEvent]:
+        import websocket
+
         parts = urlsplit(self.base_url)
         scheme = "wss" if parts.scheme == "https" else "ws"
         url = f"{scheme}://{parts.netloc}{parts.path}/api/v1/messenger/ws?capabilities=chat_settings_v2"
-        access_token = self._access_token()
         self._rate_limits.acquire("GET", "/api/v1/messenger/ws")
         try:
             conn = websocket.create_connection(
@@ -1247,7 +1277,25 @@ class Bot:
                 timeout = min(5, max(0.1, 5 - (now - last_ping)))
                 conn.settimeout(timeout if stop is None else min(timeout, 1.0))
                 try:
-                    frame = conn.recv()
+                    receive = getattr(conn, "recv_data", None)
+                    if callable(receive):
+                        opcode, frame = receive(control_frame=True)
+                        if opcode == websocket.ABNF.OPCODE_CLOSE:
+                            code = (
+                                int.from_bytes(frame[:2], "big")
+                                if isinstance(frame, (bytes, bytearray))
+                                and len(frame) >= 2
+                                else None
+                            )
+                            raise _WebSocketClosed(code)
+                        if opcode in {
+                            websocket.ABNF.OPCODE_PING,
+                            websocket.ABNF.OPCODE_PONG,
+                        }:
+                            last_frame = time.monotonic()
+                            continue
+                    else:
+                        frame = conn.recv()
                 except websocket.WebSocketTimeoutException:
                     continue
                 if frame in (None, "", b""):
@@ -1263,7 +1311,7 @@ class Bot:
                     event.get("type"), str
                 ):
                     raise ProtocolError("Invalid WebSocket event")
-                yield event
+                yield cast(UpdateEvent, event)
         finally:
             conn.close()
 

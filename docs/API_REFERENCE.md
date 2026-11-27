@@ -102,7 +102,7 @@ Bot.from_refresh_token(refresh_token, session_path=".itd-session.json", ...)
 ### Источники
 
 - `get_updates(since, limit=None)` — один пакет: `events`, `next_event_seq`, `reset_required`. При потере журнала бросает `ResetRequired`.
-- `websocket_events(*, stop=None)` — генератор живых событий (нужен `[websocket]`). Сам не переподключается и не восстанавливает пропуски.
+- `websocket_events(*, stop=None)` — генератор живых событий (нужен `[websocket]`). При закрытии с кодом 4001/4003 обновляет доступную refresh-сессию и переподключается: не больше трёх раз, с паузами 1, 2 и 4 секунды. Без refresh-сессии и при других ошибках исключение передаётся вызывающему коду. Пропуски событий восстанавливайте через `get_updates` или `poll`.
 
 ### poll
 
