@@ -175,13 +175,20 @@ Dispatcher.from_bot(bot)
 ```sh
 python -m pip install -e ".[dev]"
 python -m mypy itd_bot
+python -m mypy --strict itd_bot
 ```
 
 Методы по-прежнему возвращают обычный JSON ИТД. Аннотации описывают то, что SDK передаёт и принимает, но не гарантируют формат ответов сервера.
 
 ## Типы
 
-Описания JSON лежат в `itd_bot.schemas` и экспортируются из `itd_bot`: `UpdateEvent`, `MessagePayload`, `AttachmentPayload`, `UpdatesResponse`, `ReactionsResponse`, `ReactionEntry`, `ReactionValue`, `SendResponse`, `FileLinksResponse`, `FileLink`, `UploadInitResponse`, `UploadFinalizeResponse`.
+Описания JSON лежат в `itd_bot.schemas` и экспортируются из `itd_bot`: `ChatPayload`, `ChatsResponse`, `MessagesResponse`, `UpdateEvent`, `MessagePayload`, `AttachmentPayload`, `UpdatesResponse`, `ReactionsResponse`, `ReactionEntry`, `ReactionValue`, `SendResponse`, `FileLinksResponse`, `FileLink`, `UploadInitResponse`, `UploadFinalizeResponse`.
+
+`get_chats()` возвращает `ChatsResponse`, `get_chat()` и `create_direct_chat()` — `ChatPayload`, история (`get_messages`, `get_messages_around`) — `MessagesResponse`. Поля чата и страницы взяты из чтения клиентского бандла, остальные схемы — также из кода SDK и автономных тестов. Ответы не преобразуются, дополнительные поля сохраняются.
+
+В проектах с mypy появятся более точные подсказки; прежние аннотации обработчиков и переменных иногда потребуется уточнить. Для неподписанного в схеме поля используйте исходный словарь, например `raw = cast(dict[str, Any], bot.get_chat("CHAT_ID"))` с импортами `Any` и `cast` из `typing`. Это только подсказка анализатору. Существующие значения аргументов принимаются как раньше; `PathLike[Any]` сохраняет прежнюю широту аннотаций путей. Строгая проверка SDK включена в CI.
+
+Пример чтения страницы чатов с аннотациями: [`examples/typed_responses.py`](../examples/typed_responses.py).
 
 ```python
 from itd_bot import MessageContext, UpdatesResponse

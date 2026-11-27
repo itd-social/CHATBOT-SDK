@@ -191,7 +191,7 @@ class ChatActionHandle:
         self._thread.start()
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
         self._stop.set()
         thread = self._thread
         if thread is not None and thread is not threading.current_thread():

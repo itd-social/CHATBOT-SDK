@@ -8,12 +8,12 @@ import tempfile
 import threading
 import time
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeVar, cast, overload
 
 from .client import Bot
 from .context import EventContext, MessageContext
@@ -32,6 +32,10 @@ from .schemas import MessagePayload, UpdateEvent
 _COMMAND = re.compile(r"^/([A-Za-z0-9_]{1,32})(?:@([A-Za-z0-9_]{1,64}))?(?=\s|$)")
 _READ_MODES = frozenset({"background", "blocking", "batch", "off"})
 _log = logging.getLogger(__name__)
+_Handler = TypeVar("_Handler", bound=Callable[..., Any])
+_ErrorHandler = TypeVar(
+    "_ErrorHandler", bound=Callable[[Exception, UpdateEvent], ErrorAction | None]
+)
 
 
 @dataclass(frozen=True)
@@ -196,7 +200,7 @@ class Dispatcher:
         return self.typing_interval
 
     @contextmanager
-    def _typing(self, chat_id: str):
+    def _typing(self, chat_id: str) -> Iterator[None]:
         if not self.auto_typing:
             yield
             return
@@ -206,7 +210,7 @@ class Dispatcher:
         else:
             delay = self.typing_delay
 
-        def refresh():
+        def refresh() -> None:
             nonlocal delay
             while not stopped.wait(delay):
                 delay = self._send_typing(chat_id, stopped)
@@ -218,12 +222,12 @@ class Dispatcher:
         finally:
             stopped.set()
 
-    def on_event(self, event_type: str) -> Callable:
+    def on_event(self, event_type: str) -> Callable[[_Handler], _Handler]:
         """Register a callback for a non-message event, such as message_reactions."""
         if not event_type or event_type in {"new_message", "new_messages"}:
             raise ValueError("use command/on_message for incoming messages")
 
-        def register(handler: Callable[[UpdateEvent], Any]) -> Callable:
+        def register(handler: _Handler) -> _Handler:
             if event_type in self._event_handlers:
                 raise ValueError("event handler already registered")
             self._event_handlers[event_type] = handler
@@ -231,10 +235,18 @@ class Dispatcher:
 
         return register
 
+    @overload
+    def on_error(
+        self, handler: None = None
+    ) -> Callable[[_ErrorHandler], _ErrorHandler]: ...
+
+    @overload
+    def on_error(self, handler: _ErrorHandler) -> _ErrorHandler: ...
+
     def on_error(
         self,
         handler: Callable[[Exception, UpdateEvent], ErrorAction | None] | None = None,
-    ) -> Callable:
+    ) -> Callable[..., Any]:
         """Register the one hook that decides what polling does after a handler fails.
 
         Use ``@router.on_error()`` like the other decorators (``@router.on_error``
@@ -243,7 +255,7 @@ class Dispatcher:
         to ``poll``.
         """
 
-        def register(func: Callable) -> Callable:
+        def register(func: _ErrorHandler) -> _ErrorHandler:
             if self._error_handler is not None:
                 raise ValueError("error handler already registered")
             self._error_handler = func
@@ -251,12 +263,12 @@ class Dispatcher:
 
         return register if handler is None else register(handler)
 
-    def command(self, name: str) -> Callable:
+    def command(self, name: str) -> Callable[[_Handler], _Handler]:
         name = name.removeprefix("/").lower()
         if not re.fullmatch(r"[a-z0-9_]{1,32}", name):
             raise ValueError("invalid command name")
 
-        def register(handler: Callable[[CommandContext], Any]) -> Callable:
+        def register(handler: _Handler) -> _Handler:
             if name in self._commands:
                 raise ValueError("command already registered")
             self._commands[name] = handler
@@ -264,9 +276,7 @@ class Dispatcher:
 
         return register
 
-    def on_message(
-        self, handler: Callable[[UpdateEvent, MessagePayload], Any]
-    ) -> Callable:
+    def on_message(self, handler: _Handler) -> _Handler:
         if self._message_handler is not None:
             raise ValueError("message handler already registered")
         warnings.warn(
@@ -278,8 +288,8 @@ class Dispatcher:
         self._fallback = handler
         return handler
 
-    def message(self) -> Callable:
-        def register(handler: Callable[[MessageContext], Any]) -> Callable:
+    def message(self) -> Callable[[_Handler], _Handler]:
+        def register(handler: _Handler) -> _Handler:
             if self._message_handler is not None or self._fallback is not None:
                 raise ValueError("message handler already registered")
             self._message_handler = handler
@@ -287,8 +297,8 @@ class Dispatcher:
 
         return register
 
-    def photo(self) -> Callable:
-        def register(handler: Callable[[MessageContext], Any]) -> Callable:
+    def photo(self) -> Callable[[_Handler], _Handler]:
+        def register(handler: _Handler) -> _Handler:
             if self._photo_handler is not None:
                 raise ValueError("photo handler already registered")
             self._photo_handler = handler
@@ -296,8 +306,8 @@ class Dispatcher:
 
         return register
 
-    def _event_decorator(self, *event_types: str) -> Callable:
-        def register(handler: Callable[[EventContext], Any]) -> Callable:
+    def _event_decorator(self, *event_types: str) -> Callable[[_Handler], _Handler]:
+        def register(handler: _Handler) -> _Handler:
             if any(name in self._event_handlers for name in event_types):
                 raise ValueError("event handler already registered")
 
@@ -310,13 +320,13 @@ class Dispatcher:
 
         return register
 
-    def reaction(self) -> Callable:
+    def reaction(self) -> Callable[[_Handler], _Handler]:
         return self._event_decorator("message_reaction", "message_reactions")
 
-    def edited(self) -> Callable:
+    def edited(self) -> Callable[[_Handler], _Handler]:
         return self._event_decorator("message_edited")
 
-    def deleted(self) -> Callable:
+    def deleted(self) -> Callable[[_Handler], _Handler]:
         return self._event_decorator("message_deleted", "messages_deleted")
 
     def handle(self, event: UpdateEvent) -> None:
@@ -420,7 +430,7 @@ class Dispatcher:
         self,
         since: int | None = None,
         *,
-        state_path: str | os.PathLike | None = None,
+        state_path: str | os.PathLike[Any] | None = None,
         handle_signals: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -446,7 +456,7 @@ class Dispatcher:
     def _run_polling(
         self,
         since: int | None,
-        state_path: str | os.PathLike | None,
+        state_path: str | os.PathLike[Any] | None,
         kwargs: dict[str, Any],
     ) -> None:
         handler: Callable[[UpdateEvent], None] = self.handle

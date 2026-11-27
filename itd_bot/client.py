@@ -35,7 +35,10 @@ from .polling import (
 from .post import Post
 from .rate_limits import RateLimiter, default_limiter
 from .schemas import (
+    ChatPayload,
+    ChatsResponse,
     FileLinksResponse,
+    MessagesResponse,
     ReactionsResponse,
     SendResponse,
     UpdateEvent,
@@ -51,8 +54,8 @@ _WS_AUTH_RETRIES = 3
 
 def _send_body(
     body: dict[str, Any],
-    attachments: list | None,
-    entities: list | None,
+    attachments: list[Any] | None,
+    entities: list[Any] | None,
     client_message_id: str | None,
 ) -> dict[str, Any]:
     """Add send fields and generate an ID only when none was supplied."""
@@ -86,7 +89,7 @@ class Bot:
         timeout: float = 30.0,
         client: httpx.Client | None = None,
         refresh_token: str | None = None,
-        session_path: str | os.PathLike | None = ".itd-session.json",
+        session_path: str | os.PathLike[Any] | None = ".itd-session.json",
         limiter: RateLimiter | None = None,
         get_retries: int = 2,
         on_protocol_error: str = "raise",
@@ -323,7 +326,7 @@ class Bot:
 
     def upload_file(
         self,
-        source: str | os.PathLike | bytes,
+        source: str | os.PathLike[Any] | bytes,
         *,
         filename: str | None = None,
         mime: str | None = None,
@@ -344,7 +347,7 @@ class Bot:
     def send_file(
         self,
         chat_id: str,
-        source: str | os.PathLike | bytes,
+        source: str | os.PathLike[Any] | bytes,
         *,
         text: str = "",
         filename: str | None = None,
@@ -370,7 +373,7 @@ class Bot:
     def send_photo(
         self,
         chat_id: str,
-        source: str | os.PathLike | bytes,
+        source: str | os.PathLike[Any] | bytes,
         *,
         caption: str = "",
         compress: bool = False,
@@ -395,7 +398,7 @@ class Bot:
     def send_video(
         self,
         chat_id: str,
-        source: str | os.PathLike | bytes,
+        source: str | os.PathLike[Any] | bytes,
         *,
         caption: str = "",
         compress: bool = False,
@@ -409,7 +412,7 @@ class Bot:
     def send_music(
         self,
         chat_id: str,
-        source: str | os.PathLike | bytes,
+        source: str | os.PathLike[Any] | bytes,
         *,
         caption: str = "",
         **kwargs: Any,
@@ -420,7 +423,7 @@ class Bot:
     def send_audio(
         self,
         chat_id: str,
-        source: str | os.PathLike | bytes,
+        source: str | os.PathLike[Any] | bytes,
         *,
         caption: str = "",
         **kwargs: Any,
@@ -454,7 +457,7 @@ class Bot:
             raise ProtocolError("Post response ID does not match request")
         return Post(id=data["id"], raw=data, _bot=self)
 
-    def get_follow_status(self, user_ids: list[str]) -> dict:
+    def get_follow_status(self, user_ids: list[str]) -> dict[str, Any]:
         """Return whether this account follows each user ID."""
         if not user_ids:
             return {}
@@ -465,60 +468,78 @@ class Bot:
         )
         if not isinstance(result, dict) or not isinstance(result.get("data"), dict):
             raise ProtocolError("Invalid follow status response")
-        return result["data"]
+        return cast(dict[str, Any], result["data"])
 
-    def download_banner(self, url: str, destination: str | os.PathLike) -> Path:
+    def download_banner(self, url: str, destination: str | os.PathLike[Any]) -> Path:
         """Download a profile banner from ITD's CDN without sending authentication."""
         return _files.download_banner(
             self, url, destination, client_factory=httpx.Client
         )
 
-    def get_chats(self, *, limit: int | None = None, before: str | None = None) -> dict:
-        return self.request(
-            "GET",
-            "/chats",
-            params={
-                k: v
-                for k, v in {
-                    "limit": limit,
-                    "before": before,
-                    "manual_unread": 1,
-                }.items()
-                if v is not None
-            },
+    def get_chats(
+        self, *, limit: int | None = None, before: str | None = None
+    ) -> ChatsResponse:
+        return cast(
+            ChatsResponse,
+            self.request(
+                "GET",
+                "/chats",
+                params={
+                    k: v
+                    for k, v in {
+                        "limit": limit,
+                        "before": before,
+                        "manual_unread": 1,
+                    }.items()
+                    if v is not None
+                },
+            ),
         )
 
-    def get_unread_count(self) -> dict:
-        return self.request("GET", "/chats/unread", params={"manual_unread": 1})
-
-    def get_chat(self, chat_id: str) -> dict:
-        return self.request(
-            "GET", f"/chats/{_id(chat_id)}", params={"manual_unread": 1}
+    def get_unread_count(self) -> dict[str, Any]:
+        return cast(
+            dict[str, Any],
+            self.request("GET", "/chats/unread", params={"manual_unread": 1}),
         )
 
-    def create_direct_chat(self, user_id: str) -> dict:
-        return self.request("POST", "/chats/dm", json={"target_user_id": user_id})
+    def get_chat(self, chat_id: str) -> ChatPayload:
+        return cast(
+            ChatPayload,
+            self.request("GET", f"/chats/{_id(chat_id)}", params={"manual_unread": 1}),
+        )
+
+    def create_direct_chat(self, user_id: str) -> ChatPayload:
+        return cast(
+            ChatPayload,
+            self.request("POST", "/chats/dm", json={"target_user_id": user_id}),
+        )
 
     def get_messages(
         self, chat_id: str, *, limit: int | None = None, before: str | None = None
-    ) -> dict:
-        return self.request(
-            "GET",
-            f"/chats/{_id(chat_id)}/messages",
-            params={
-                k: v
-                for k, v in {"limit": limit, "before": before}.items()
-                if v is not None
-            },
+    ) -> MessagesResponse:
+        return cast(
+            MessagesResponse,
+            self.request(
+                "GET",
+                f"/chats/{_id(chat_id)}/messages",
+                params={
+                    k: v
+                    for k, v in {"limit": limit, "before": before}.items()
+                    if v is not None
+                },
+            ),
         )
 
     def get_messages_around(
         self, chat_id: str, message_id: str, *, limit: int = 40
-    ) -> dict:
-        return self.request(
-            "GET",
-            f"/chats/{_id(chat_id)}/messages/around/{_id(message_id)}",
-            params={"limit": limit},
+    ) -> MessagesResponse:
+        return cast(
+            MessagesResponse,
+            self.request(
+                "GET",
+                f"/chats/{_id(chat_id)}/messages/around/{_id(message_id)}",
+                params={"limit": limit},
+            ),
         )
 
     def send_message(
@@ -527,8 +548,8 @@ class Bot:
         text: str,
         *,
         reply_to_id: str | None = None,
-        attachments: list | None = None,
-        entities: list | None = None,
+        attachments: list[Any] | None = None,
+        entities: list[Any] | None = None,
         client_message_id: str | None = None,
     ) -> SendResponse:
         body = _send_body(
@@ -537,19 +558,25 @@ class Bot:
             entities,
             client_message_id,
         )
-        return self.request("POST", f"/chats/{_id(chat_id)}/messages", json=body)
+        return cast(
+            SendResponse,
+            self.request("POST", f"/chats/{_id(chat_id)}/messages", json=body),
+        )
 
     def send_message_to_user(
         self,
         user_id: str,
         text: str,
         *,
-        attachments: list | None = None,
-        entities: list | None = None,
+        attachments: list[Any] | None = None,
+        entities: list[Any] | None = None,
         client_message_id: str | None = None,
     ) -> SendResponse:
         body = _send_body({"text": text}, attachments, entities, client_message_id)
-        return self.request("POST", f"/users/{_id(user_id)}/messages", json=body)
+        return cast(
+            SendResponse,
+            self.request("POST", f"/users/{_id(user_id)}/messages", json=body),
+        )
 
     def send_formatted(self, chat_id: str, content: Any, **kwargs: Any) -> SendResponse:
         from .formatting import Text
@@ -575,9 +602,9 @@ class Bot:
         message_id: str,
         text: str,
         *,
-        attachments: list | None = None,
-        entities: list | None = None,
-    ) -> dict:
+        attachments: list[Any] | None = None,
+        entities: list[Any] | None = None,
+    ) -> dict[str, Any]:
         """Edit a message.
 
         ``entities`` is sent whenever it is not None, so an empty list goes to
@@ -590,8 +617,11 @@ class Bot:
             body["attachments"] = attachments
         if entities is not None:
             body["entities"] = entities
-        return self.request(
-            "PATCH", f"/chats/{_id(chat_id)}/messages/{_id(message_id)}", json=body
+        return cast(
+            dict[str, Any],
+            self.request(
+                "PATCH", f"/chats/{_id(chat_id)}/messages/{_id(message_id)}", json=body
+            ),
         )
 
     def delete_messages(
@@ -713,15 +743,18 @@ class Bot:
         return self.request("GET", "/reactions/available")
 
     def get_reactions(self, chat_id: str, message_id: str) -> ReactionsResponse:
-        return self.request(
-            "GET", f"/chats/{_id(chat_id)}/messages/{_id(message_id)}/reactions"
+        return cast(
+            ReactionsResponse,
+            self.request(
+                "GET", f"/chats/{_id(chat_id)}/messages/{_id(message_id)}/reactions"
+            ),
         )
 
     def set_reactions(
         self,
         chat_id: str,
         message_id: str,
-        reactions: list,
+        reactions: list[Any],
         *,
         expected_version: str,
         operation_id: str,
@@ -815,8 +848,11 @@ class Bot:
         )
 
     def get_file_links(self, chat_id: str, file_ids: list[str]) -> FileLinksResponse:
-        return self.request(
-            "POST", f"/chats/{_id(chat_id)}/file-links", json={"file_ids": file_ids}
+        return cast(
+            FileLinksResponse,
+            self.request(
+                "POST", f"/chats/{_id(chat_id)}/file-links", json={"file_ids": file_ids}
+            ),
         )
 
     def create_file_session(self) -> None:
@@ -828,13 +864,13 @@ class Bot:
         chat_id: str,
         file_id: str,
         *,
-        destination: str | os.PathLike | None = None,
+        destination: str | os.PathLike[Any] | None = None,
     ) -> bytes | Path:
         """Resolve a chat attachment and download it; destination streams to a new file."""
         return _files.download_file(self, chat_id, file_id, destination=destination)
 
     def _read_download(
-        self, response: httpx.Response, destination: str | os.PathLike | None
+        self, response: httpx.Response, destination: str | os.PathLike[Any] | None
     ) -> bytes | Path:
         return _files._read_download(self, response, destination)
 
@@ -853,7 +889,9 @@ class Bot:
         """Copies of the last 32 skipped raw fragments; may contain private data."""
         return _updates.protocol_errors(self)
 
-    def websocket_events(self, *, stop: threading.Event | None = None):
+    def websocket_events(
+        self, *, stop: threading.Event | None = None
+    ) -> Iterator[UpdateEvent]:
         """Yield live frames until disconnected; use get_updates to recover gaps.
 
         Close codes 4001/4003 refresh an available session and reconnect, at most

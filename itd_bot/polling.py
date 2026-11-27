@@ -60,7 +60,7 @@ def is_transient(exc: BaseException) -> bool:
 
 def backoff_delay(attempt: int, initial: float, maximum: float) -> float:
     """Pause before retry number ``attempt`` (1, 2, ...); never above ``maximum``."""
-    base = min(maximum, initial * 2 ** min(attempt - 1, _MAX_EXPONENT))
+    base: float = min(maximum, initial * 2 ** min(attempt - 1, _MAX_EXPONENT))
     return base * (1 - _JITTER * random.random())
 
 

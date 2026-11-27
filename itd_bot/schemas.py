@@ -11,6 +11,24 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 
+class ChatPayload(TypedDict, total=False):
+    """Chat fields read by the client bundle; not a specification."""
+
+    chat_id: str
+    chat_type: int
+    other_user_id: str | None
+    unread_count: int
+    is_pinned: bool
+    is_muted: bool
+
+
+class ChatsResponse(TypedDict, total=False):
+    """A chat page and its event cursor; not a specification."""
+
+    chats: list[ChatPayload]
+    event_seq: int
+
+
 class AttachmentPayload(TypedDict, total=False):
     """A message attachment.
 
@@ -33,6 +51,12 @@ class MessagePayload(TypedDict, total=False):
     sender_id: str
     text: str | None
     attachments: list[AttachmentPayload]
+
+
+class MessagesResponse(TypedDict, total=False):
+    """Message history fields consumed by the client; not a specification."""
+
+    messages: list[MessagePayload]
 
 
 class UpdateEvent(TypedDict, total=False):
