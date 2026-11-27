@@ -48,13 +48,13 @@ pyproject.toml    зависимости, инструменты, версия
 ## Проверки перед PR
 
 ```sh
-python -m ruff check itd_bot examples tests benchmarks
-python -m ruff format --check itd_bot examples tests benchmarks
+python -m ruff check itd_bot examples tests benchmarks tools
+python -m ruff format --check itd_bot examples tests benchmarks tools
 python -m pytest -q
 python -m build
 ```
 
-- Автоформатирование: `python -m ruff format itd_bot examples tests benchmarks`.
+- Автоформатирование: `python -m ruff format itd_bot examples tests benchmarks tools`.
 - Один тест: `python -m pytest tests/test_refresh_session.py -q`.
 - Хуки Ruff перед коммитом: [CONTRIBUTING.md](CONTRIBUTING.md#pre-commit).
 
@@ -75,5 +75,6 @@ python -m build
 
 ## Дальше
 
+- [Проверка новой сборки сайта и опись API](docs/API_COVERAGE.md)
 - Ветки и коммиты: [GIT_WORKFLOW.md](GIT_WORKFLOW.md)
 - Выпуск версии: [RELEASING.md](RELEASING.md)

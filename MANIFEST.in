@@ -3,6 +3,7 @@ include AGENTS.md CLAUDE.md CHANGELOG.md CONTRIBUTING.md GIT_WORKFLOW.md RELEASI
 graft docs
 graft examples
 graft benchmarks
+graft tools
 graft templates
 graft .github/assets
 prune .bundle

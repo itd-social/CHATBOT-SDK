@@ -60,3 +60,9 @@
 `/legal`, `/legal/{slug}`, `/legal/{slug}/history`, `/legal/{slug}/versions/{version}`, `/api/legal-documents?scope=social`, `/terms`, `/privacy`, `/cookies`, `/child-safety`, `/subscription-terms`, `/recurring-terms`, `/consent?flow=`, `/support`, `/delete-account`, `/onboarding`, `/messenger/entry`, `/messenger-sw.js`.
 
 Это в основном страницы интерфейса, а не API.
+
+## Проверка новой сборки
+
+Запустите `python tools/check_bundle.py ПУТЬ_К_БАНДЛУ`, чтобы сравнить API
+мессенджера в локальной сборке с машиночитаемой описью. [Таблица покрытия](API_COVERAGE.md) содержит
+соответствия SDK, уровни уверенности и ограничения статического разбора.
