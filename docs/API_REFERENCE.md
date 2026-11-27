@@ -178,6 +178,21 @@ Router.from_bot(bot, **kwargs)
 
 Режимы `first`/`all`, порядок, контексты и middleware: [Router](ROUTER.md).
 
+### FSM
+
+| Что | Описание |
+|---|---|
+| `FSM(store, *, namespace)` | Состояние по `(namespace, chat_id, sender_id)` |
+| `fsm.get(ctx) -> FSMRecord` | Отдельный словарь `{"state": str \| None, "data": dict}` |
+| `fsm.set(ctx, state, *, data=None)`, `fsm.clear(ctx)` | Заменить запись целиком или удалить её |
+| `MemoryFSMStore()`, `FileFSMStore(path)` | Потокобезопасная память или атомарный JSON-файл |
+| `RedisFSMStore(client, *, prefix="itd:fsm")` | Хранилище через переданный синхронный клиент |
+| `RedisFSMStore.from_url(url, *, prefix="itd:fsm", **kwargs)`, `close()` | Создать и закрыть собственный клиент через extra `redis` |
+| `FSMStore`, `FSMKey`, `FSMRecord` | Протокол `get`/`set`/`clear`, ключ `(namespace, chat, user)` и TypedDict записи |
+| `filters.state(fsm, value)` | Фильтр сообщения по состоянию, `None` означает отсутствие активного шага |
+
+Порядок обработки, ограничения процессов и пример: [диалоги с состоянием](FSM.md).
+
 ## Форматирование
 
 `Text(text="")` с методами `add(text, styles=(), url=None)`, `bold`, `italic`, `underline`, `strike`, `code`, `spoiler`, `link`. `build()` возвращает `(text, entities)`. `utf16_length(text)` считает длину в UTF-16. Markdown не поддерживается.

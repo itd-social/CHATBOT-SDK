@@ -15,6 +15,15 @@ from .errors import (
     UploadQuotaError,
 )
 from .formatting import Text, utf16_length
+from .fsm import (
+    FSM,
+    FileFSMStore,
+    FSMKey,
+    FSMRecord,
+    FSMStore,
+    MemoryFSMStore,
+    RedisFSMStore,
+)
 from .polling import ErrorAction
 from .post import Post
 from .rate_limits import RateLimitConfig, RateLimiter
@@ -66,6 +75,13 @@ __all__ = [
     "Dispatcher",
     "Router",
     "filters",
+    "FSM",
+    "FSMKey",
+    "FSMRecord",
+    "FSMStore",
+    "MemoryFSMStore",
+    "FileFSMStore",
+    "RedisFSMStore",
     "DedupStore",
     "MemoryDedupStore",
     "ErrorAction",
