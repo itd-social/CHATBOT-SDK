@@ -44,6 +44,7 @@ class UpdateEvent(TypedDict, total=False):
     """
 
     type: str
+    event_seq: int
     chat_id: str
     message: MessagePayload
     messages: list[MessagePayload]
