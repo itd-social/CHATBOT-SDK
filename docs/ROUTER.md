@@ -93,3 +93,4 @@ Middleware вызывается после фильтров для каждог�
 - [Запускаемый пример](../examples/router_bot/README.md)
 - [Сигнатуры Router и фильтров](API_REFERENCE.md#router)
 - [Настройки окружения](ENVIRONMENT.md)
+- [Диалоги с состоянием](FSM.md)

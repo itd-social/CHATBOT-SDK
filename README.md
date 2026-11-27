@@ -78,6 +78,7 @@ with Bot.from_refresh_token(os.environ["ITD_REFRESH_TOKEN"]) as bot:
 | Прочитать настройки из окружения или .env | [Настройки окружения](docs/ENVIRONMENT.md) |
 | Отправлять сообщения, файлы, реакции | [Руководство](docs/USAGE.md) |
 | Использовать фильтры, middleware и несколько обработчиков | [Router](docs/ROUTER.md) |
+| Написать диалог из нескольких шагов | [Состояния FSM](docs/FSM.md) |
 | Найти нужный метод | [Справочник API](docs/API_REFERENCE.md) |
 | Понять, почему бот иногда ждёт | [Лимиты запросов](docs/RATE_LIMITS.md) |
 | Посмотреть примеры | [Папка examples](examples/) |

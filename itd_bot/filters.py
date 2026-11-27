@@ -5,10 +5,13 @@ from __future__ import annotations
 import inspect
 import re
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .context import EventContext, MessageContext
 from .dispatcher import CommandContext
+
+if TYPE_CHECKING:
+    from .fsm import FSM
 
 Context = MessageContext | EventContext
 _Matcher = Callable[[Context, str | None], Context | None]
@@ -112,6 +115,17 @@ def text(value: str) -> Filter:
         raise ValueError("text requires a string")
     return predicate(
         lambda context: isinstance(context, MessageContext) and context.text == value
+    )
+
+
+def state(fsm: FSM, value: str | None) -> Filter:
+    """Match a message's dialogue state; storage errors reach on_error."""
+    if value is not None and not isinstance(value, str):
+        raise ValueError("Состояние фильтра FSM должно быть строкой или None")
+    return predicate(
+        lambda context: (
+            isinstance(context, MessageContext) and fsm.get(context)["state"] == value
+        )
     )
 
 

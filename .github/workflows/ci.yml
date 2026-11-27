@@ -50,6 +50,39 @@ jobs:
       - run: python -m pip install -e ".[dev,env]"
       - run: python -m pytest -q
 
+  redis:
+    name: Redis FSM / Python ${{ matrix.python }} / redis-py ${{ matrix.redis }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.10"
+            redis: "5"
+            dependency: "redis>=5,<6"
+          - python: "3.13"
+            redis: "8"
+            dependency: "redis>=8,<9"
+    services:
+      redis:
+        image: redis:7.4
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      ITD_TEST_REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[test,redis]" "${{ matrix.dependency }}"
+      - run: python -m pytest tests/test_fsm_redis_integration.py -q
+
   package:
     name: Build distribution
     runs-on: ubuntu-latest

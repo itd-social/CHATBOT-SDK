@@ -23,4 +23,7 @@ htmlcov/
 .bot-state.json
 .bot-state.json.*.tmp
 
+.fsm-state.json
+.fsm-state.json.*.tmp
+
 research/
