@@ -8,6 +8,7 @@ from .enums import ChatType, EntityType
 from .errors import (
     BlockedError,
     MessagesClosedError,
+    MessageValidationError,
     NukstaRequiredError,
     RateLimitError,
     SessionStorageError,
@@ -55,6 +56,7 @@ __all__ = [
     "NukstaRequiredError",
     "BlockedError",
     "MessagesClosedError",
+    "MessageValidationError",
     "RateLimitError",
     "UploadQuotaError",
     "RateLimitConfig",

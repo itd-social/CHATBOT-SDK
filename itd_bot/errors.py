@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 
+class MessageValidationError(ValueError):
+    """Opt-in message validation rejected a web-client limit before HTTP."""
+
+
 class APIError(Exception):
     def __init__(
         self,
