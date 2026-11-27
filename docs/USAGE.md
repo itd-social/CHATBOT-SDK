@@ -22,6 +22,8 @@
 
 ## Команды и обработчики
 
+Для фильтров, middleware, вложенных роутеров и нескольких обработчиков используйте [Router](ROUTER.md). Ниже — прежний Dispatcher.
+
 ```python
 from itd_bot import Dispatcher
 
