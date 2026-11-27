@@ -381,6 +381,8 @@ router = Dispatcher.from_bot(bot, deduplicate=False)   # прежняя обра
 
 ### Быстрые обновления и параллельная работа
 
+Для данных прямо из кадров выберите [источник WebSocket](WEBSOCKET_SOURCE.md). Описанный ниже `websocket=True` сохраняет режим сигналов для HTTP-опроса.
+
 ```python
 router.run_polling(state_path=".bot-state.json", websocket=True, workers=4)
 ```

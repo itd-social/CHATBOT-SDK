@@ -965,6 +965,7 @@ class Bot:
         stop: threading.Event | None = None,
         chat_queues: bool = False,
         chat_queue_size: int = 64,
+        source: str = "poll",
     ) -> None:
         """Process batches; checkpoint after every batch whose handlers finished.
 
@@ -996,6 +997,10 @@ class Bot:
         worker threads.
 
         Set ``stop`` to finish the current batch, checkpoint and return.
+
+        ``source="websocket"`` reads frames directly, using HTTP for bootstrap,
+        gaps and disconnects. ``source="poll"`` (default) preserves HTTP polling
+        and the optional websocket wake-up mode. See docs/WEBSOCKET_SOURCE.md.
         """
         return _updates.poll(
             self,
@@ -1013,6 +1018,7 @@ class Bot:
             stop=stop,
             chat_queues=chat_queues,
             chat_queue_size=chat_queue_size,
+            source=source,
             pause_wait=pause,
             monotonic=time.monotonic,
         )

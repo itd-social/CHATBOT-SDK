@@ -107,6 +107,7 @@ def poll(
     stop: threading.Event | None = None,
     chat_queues: bool = False,
     chat_queue_size: int = 64,
+    source: str = "poll",
     pause_wait: Callable[[threading.Event | None, float], bool],
     monotonic: Callable[[], float],
 ) -> None:
@@ -140,7 +141,13 @@ def poll(
     worker threads.
 
     Set ``stop`` to finish the current batch, checkpoint and return.
+
+    ``source="websocket"`` consumes sequenced frames and recovers through HTTP;
+    unsequenced notifications never advance the cursor. The default remains
+    HTTP polling, with websocket=True as an optional wake-up signal.
     """
+    if not isinstance(source, str) or source not in {"poll", "websocket"}:
+        raise ValueError("source must be 'poll' or 'websocket'")
     if interval <= 0:
         raise ValueError("interval must be positive")
     if not isinstance(chat_queues, bool):
@@ -165,7 +172,7 @@ def poll(
         or handler_retries < 0
     ):
         raise ValueError("handler_retries must be a non-negative integer")
-    if websocket:
+    if websocket or source == "websocket":
         self._require_websocket()
     run = _EventRunner(
         handler,
@@ -179,7 +186,28 @@ def poll(
     wake = threading.Event()
     ws_stop = threading.Event()
     ws_thread = None
-    if websocket:
+    frames = None
+    fetch: Callable[[int], UpdatesResponse] = self.get_updates
+    checkpoint = on_checkpoint
+    if source == "websocket":
+        from ._ws_source import WebSocketUpdates
+
+        frames = WebSocketUpdates(
+            self,
+            wake,
+            stop,
+            capacity=max(2, workers) * chat_queue_size,
+            min_http_interval=min_fetch_interval,
+        )
+        fetch = frames.fetch
+
+        def checkpoint(cursor: int) -> None:
+            if on_checkpoint is not None:
+                on_checkpoint(cursor)
+            assert frames is not None
+            frames.acknowledge(cursor)
+
+    if websocket and source == "poll":
         ws_thread = threading.Thread(
             target=self._websocket_wakeups,
             args=(wake, ws_stop),
@@ -198,20 +226,21 @@ def poll(
     try:
         if chat_queues:
             _poll_chat_queues(
-                self.get_updates,
+                fetch,
                 run,
                 since,
-                checkpoint=on_checkpoint,
+                checkpoint=checkpoint,
                 workers=workers,
                 capacity=chat_queue_size,
                 interval=interval,
-                min_fetch_interval=min_fetch_interval,
-                websocket=websocket,
+                min_fetch_interval=min_fetch_interval if frames is None else 0,
+                websocket=websocket or frames is not None,
                 wake=wake,
                 stop=stop,
                 retry_initial=retry_initial_delay,
                 retry_max=retry_max_delay,
                 prepare=run.for_batch,
+                allow_unsequenced=frames is not None,
             )
             clean = True
             return
@@ -219,7 +248,7 @@ def poll(
             if stop is not None and stop.is_set():
                 clean = True
                 return
-            if websocket and last_fetch is not None:
+            if websocket and frames is None and last_fetch is not None:
                 gap = last_fetch + min_fetch_interval - monotonic()
                 if gap > 0 and pause_wait(stop, gap):
                     clean = True
@@ -227,7 +256,7 @@ def poll(
             wake.clear()
             last_fetch = monotonic()
             try:
-                batch = self.get_updates(since)
+                batch = fetch(since)
             except RateLimitError as exc:
                 if pause_wait(stop, min(exc.retry_after_seconds, 60)):
                     clean = True
@@ -278,19 +307,21 @@ def poll(
                 continue
             failures = 0
             next_seq = batch["next_event_seq"]
-            if on_checkpoint is not None:
-                on_checkpoint(next_seq)
+            if checkpoint is not None:
+                checkpoint(next_seq)
             advanced = next_seq > since
             since = next_seq
             if events and advanced:
                 continue
-            if websocket:
+            if websocket or frames is not None:
                 wait_for_wake(wake, stop, interval)
             elif pause_wait(stop, interval):
                 clean = True
                 return
     finally:
         ws_stop.set()
+        if frames is not None:
+            frames.close()
         if executor is not None:
             executor.shutdown(wait=clean, cancel_futures=not clean)
         if clean and ws_thread is not None:

@@ -70,6 +70,7 @@ class UpdateEvent(TypedDict, total=False):
     type: str
     event_seq: int
     chat_id: str
+    event_seq_count: int
     message: MessagePayload
     messages: list[MessagePayload]
     message_id: str
