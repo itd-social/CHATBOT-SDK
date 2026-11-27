@@ -44,6 +44,7 @@ class UpdateEvent(TypedDict, total=False):
     """
 
     type: str
+    event_seq: int
     chat_id: str
     message: MessagePayload
     messages: list[MessagePayload]
@@ -98,9 +99,11 @@ class SendResponse(TypedDict, total=False):
     """The answer after sending a message.
 
     Based on the client bundle and tests, this is not a specification.
+    ``replayed`` is kept when supplied by the server, never inferred locally.
     """
 
     message_id: str
+    replayed: bool
 
 
 class FileLink(TypedDict, total=False):

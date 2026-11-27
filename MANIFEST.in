@@ -2,9 +2,11 @@ include tests/conftest.py
 include AGENTS.md CLAUDE.md CHANGELOG.md CONTRIBUTING.md GIT_WORKFLOW.md RELEASING.md SECURITY.md dev.md
 graft docs
 graft examples
+graft benchmarks
 graft templates
 graft .github/assets
 prune .bundle
 prune .venv
 global-exclude __pycache__ *.py[cod] .env .env.*
 global-exclude .itd-session.json .itd-session-* .itd-refresh-session.json .itd-refresh-test-cursor*
+include .env.example
