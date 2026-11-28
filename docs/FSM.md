@@ -8,15 +8,18 @@ from itd_bot import FSM, Bot, MemoryFSMStore, Router, filters
 fsm = FSM(MemoryFSMStore(), namespace="name-bot")
 dialogue = Router()
 
+
 @dialogue.message(filters.command("start"))
 def start(ctx):
     ctx.reply("Как вас зовут?")
     fsm.set(ctx, "name")
 
+
 @dialogue.message(filters.state(fsm, "name"), lambda ctx: bool(ctx.text))
 def name(ctx):
     ctx.reply("Спасибо за ответ!")
     fsm.clear(ctx)
+
 
 with Bot.from_env() as bot:
     router = Router.from_bot(bot, **bot.dispatcher_options)
@@ -69,7 +72,9 @@ import os
 from itd_bot import FSM, RedisFSMStore
 
 with RedisFSMStore.from_url(
-    os.environ["REDIS_URL"], socket_connect_timeout=5, socket_timeout=5,
+    os.environ["REDIS_URL"],
+    socket_connect_timeout=5,
+    socket_timeout=5,
 ) as store:
     fsm = FSM(store, namespace="questionnaire-bot")
     # Запустите здесь Router и завершите polling до выхода из with.
