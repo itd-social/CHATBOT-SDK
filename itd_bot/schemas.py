@@ -41,6 +41,17 @@ class AttachmentPayload(TypedDict, total=False):
     sizePlain: int
 
 
+class StickerEntity(TypedDict, total=False):
+    """Read-only sticker fields; not a specification.
+
+    The client validator requires a string sticker_id, at most 64 UTF-16 units.
+    Like other raw-JSON views, this hint promises no keys and validates nothing.
+    """
+
+    type: str
+    sticker_id: str
+
+
 class MessagePayload(TypedDict, total=False):
     """A message inside an event.
 
@@ -51,6 +62,7 @@ class MessagePayload(TypedDict, total=False):
     sender_id: str
     text: str | None
     attachments: list[AttachmentPayload]
+    entities: list[Any]
 
 
 class MessagesResponse(TypedDict, total=False):

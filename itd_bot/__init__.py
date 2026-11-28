@@ -41,11 +41,13 @@ from .schemas import (
     ReactionsResponse,
     ReactionValue,
     SendResponse,
+    StickerEntity,
     UpdateEvent,
     UpdatesResponse,
     UploadFinalizeResponse,
     UploadInitResponse,
 )
+from .stickers import message_stickers
 from .user import User
 
 __all__ = [
@@ -100,6 +102,8 @@ __all__ = [
     "ReactionValue",
     "ReactionsResponse",
     "SendResponse",
+    "StickerEntity",
+    "message_stickers",
     "UpdateEvent",
     "UpdatesResponse",
     "UploadFinalizeResponse",
