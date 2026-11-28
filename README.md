@@ -48,26 +48,17 @@ python -m pip install "itd-chatbot-sdk[images]"     # сжатие фото
 
 Вам понадобится `refresh_token` аккаунта бота. [Как его получить?](docs/AUTH.md#как-получить-refresh_token)
 
-```python
-import os
+Создайте готовый проект с командами `/start` и `/ping`:
 
-from itd_bot import Bot, Dispatcher
-
-with Bot.from_refresh_token(os.environ["ITD_REFRESH_TOKEN"]) as bot:
-    router = Dispatcher.from_bot(bot)
-
-    @router.command("start")
-    def start(ctx):
-        ctx.reply("Привет! Я бот на ITD ChatBot SDK.")
-
-    router.run_polling(state_path=".bot-state.json")
+```sh
+python -m itd_bot init my-bot
 ```
 
-Запустите файл и напишите боту `/start`. Бот запомнит, где остановился, в файле `.bot-state.json` (при первом запуске старые сообщения пропускаются).
+Команда создаст папку `my-bot`, отдельную `.venv` и установит зависимости. Впишите токен в созданный `.env`, затем выполните команду запуска, которую покажет генератор. Активировать окружение не нужно.
 
-> Файл сессии `.itd-session.json` содержит секрет в открытом виде. Не добавляйте его в Git. Подробности: [авторизация](docs/AUTH.md).
+Напишите аккаунту бота `/start`, затем `/ping`. Исходник `bot.py` можно сразу менять под свою задачу. Существующие папки генератор не перезаписывает.
 
-Разбор по шагам: [первый бот](docs/GETTING_STARTED.md).
+Разбор по шагам и помощь при ошибках: [первый бот](docs/GETTING_STARTED.md).
 
 ## Документация
 
