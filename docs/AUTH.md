@@ -42,7 +42,7 @@ with Bot.from_refresh_token(os.environ["ITD_REFRESH_TOKEN"]) as bot:
 
 ```python
 Bot.from_refresh_token(token, session_path="secrets/bot.json")  # свой путь
-Bot.from_refresh_token(token, session_path=None)                # только в памяти
+Bot.from_refresh_token(token, session_path=None)  # только в памяти
 ```
 
 Что важно:

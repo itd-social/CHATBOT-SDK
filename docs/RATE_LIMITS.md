@@ -33,12 +33,14 @@
 import os
 from itd_bot import Bot, RateLimitConfig, RateLimiter
 
-limiter = RateLimiter(RateLimitConfig(
-    requests_per_minute=40,
-    send_interval=2.5,
-    reaction_interval=1.5,
-    edit_interval=7.0,
-))
+limiter = RateLimiter(
+    RateLimitConfig(
+        requests_per_minute=40,
+        send_interval=2.5,
+        reaction_interval=1.5,
+        edit_interval=7.0,
+    )
+)
 
 with Bot.from_refresh_token(os.environ["ITD_REFRESH_TOKEN"], limiter=limiter) as bot:
     print(bot.get_me().username)

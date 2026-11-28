@@ -29,22 +29,27 @@ from itd_bot import Dispatcher
 
 router = Dispatcher.from_bot(bot)
 
+
 @router.command("start")
 def start(ctx):
     ctx.reply("Привет! Напишите /help")
+
 
 @router.command("echo")
 def echo(ctx):
     ctx.reply(ctx.args or "Добавьте текст после команды")
 
+
 @router.message()
 def any_message(ctx):
     print(ctx.sender_id, ctx.chat_id, ctx.text)
+
 
 @router.photo()
 def on_photo(ctx):
     for photo in ctx.photo:
         print(photo.filename, photo.mime, photo.size)
+
 
 router.run_polling(state_path=".bot-state.json")
 ```
@@ -79,8 +84,8 @@ router.run_polling(state_path=".bot-state.json")
 
 ```python
 Dispatcher(bot, self_user_id="...", read_mode="background")  # не ждать ответа сервера
-Dispatcher(bot, self_user_id="...", read_mode="batch")       # одна отметка на чат за пакет
-Dispatcher(bot, self_user_id="...", read_mode="off")         # не отмечать вовсе
+Dispatcher(bot, self_user_id="...", read_mode="batch")  # одна отметка на чат за пакет
+Dispatcher(bot, self_user_id="...", read_mode="off")  # не отмечать вовсе
 ```
 
 В режиме `background` ошибка отметки только попадёт в лог, а обработчик всё равно выполнится.
@@ -175,12 +180,14 @@ except MessageValidationError as error:
 ```python
 from itd_bot import Text
 
-content = (Text("Привет 👋 ")
-           .bold("жирный")
-           .add(" и ")
-           .italic("курсив")
-           .add(". ")
-           .link("Открыть сайт", "https://example.com"))
+content = (
+    Text("Привет 👋 ")
+    .bold("жирный")
+    .add(" и ")
+    .italic("курсив")
+    .add(". ")
+    .link("Открыть сайт", "https://example.com")
+)
 
 bot.send_formatted("CHAT_ID", content)
 ```
@@ -275,6 +282,7 @@ SDK отправит байты как есть, ничего не конвер�
 ```python
 bot.add_reaction("CHAT_ID", "MESSAGE_ID", "👍")
 
+
 @router.reaction()
 def changed(ctx):
     print(ctx.chat_id, ctx.message_id, ctx.event.get("reactions"))
@@ -290,7 +298,7 @@ def changed(ctx):
 
 ```python
 Dispatcher(bot, self_user_id="...", auto_typing=False)  # выключить
-Dispatcher(bot, self_user_id="...", typing_delay=0)     # показывать сразу
+Dispatcher(bot, self_user_id="...", typing_delay=0)  # показывать сразу
 ```
 
 Для своих долгих задач есть контекстный менеджер:
@@ -316,8 +324,9 @@ with bot.chat_action(chat_id, ChatAction.UPLOAD_VIDEO, progress=0.0) as action:
 ## Профили пользователей
 
 ```python
-user = bot.get_user("@example")       # по ID или нику
-me = bot.get_me()                      # профиль самого бота
+user = bot.get_user("@example")  # по ID или нику
+me = bot.get_me()  # профиль самого бота
+
 
 @router.command("profile")
 def profile(ctx):
@@ -330,10 +339,10 @@ def profile(ctx):
 Чтобы получить баннер или закреплённый пост:
 
 ```python
-user.banner_url                       # адрес или None
-user.download_banner("banner.png")    # скачать (не перезаписывает файл)
+user.banner_url  # адрес или None
+user.download_banner("banner.png")  # скачать (не перезаписывает файл)
 
-post = user.pinned_post               # отдельный запрос, может быть None
+post = user.pinned_post  # отдельный запрос, может быть None
 if post is not None:
     post.share("CHAT_ID", text="Закреплённый пост")
 ```
@@ -352,8 +361,8 @@ if post is not None:
 - Курсор ИТД — не Telegram `update_id`, и гарантий «ровно один раз» нет.
 
 ```python
-router.run_polling(state_path=".bot-state.json")               # курсор в файле
-router.run_polling(since=cursor, on_checkpoint=save_cursor)    # или хранить самому
+router.run_polling(state_path=".bot-state.json")  # курсор в файле
+router.run_polling(since=cursor, on_checkpoint=save_cursor)  # или хранить самому
 ```
 
 Курсор привязан к аккаунту и серверу. Не используйте один файл в нескольких процессах. Вызов без `since` и `state_path` вернёт `ValueError`, а `since` вместе с уже существующим файлом состояния тоже запрещён: выберите что-то одно.
@@ -363,8 +372,10 @@ router.run_polling(since=cursor, on_checkpoint=save_cursor)    # или хран
 По умолчанию `Dispatcher` запоминает последние 4096 успешно обработанных входящих сообщений. Повтор одного `message_id` в том же чате, аккаунте и на том же сервере пропускается до отметки прочтения и вызова обработчика. Это исправление ошибки повторной обработки пакетов; прежний режим можно вернуть:
 
 ```python
-router = Dispatcher.from_bot(bot, dedup_capacity=8192)  # больше успешных сообщений в памяти
-router = Dispatcher.from_bot(bot, deduplicate=False)   # прежняя обработка дублей
+router = Dispatcher.from_bot(
+    bot, dedup_capacity=8192
+)  # больше успешных сообщений в памяти
+router = Dispatcher.from_bot(bot, deduplicate=False)  # прежняя обработка дублей
 ```
 
 В кэш попадают только сообщения, обработка которых завершилась без исключения. Если `mark_read` или обработчик упал, сообщение можно обработать снова. При повторе пакета `new_messages` уже успешные сообщения пропускаются, а оставшиеся обрабатываются по порядку. Реакции, правки и удаления эта защита не подавляет.
@@ -405,7 +416,9 @@ SDK считает событие обработанным после возвр
 Если `get_updates` не отвечает (обрыв, таймаут) или сервер отвечает 500, 502, 503 или 504, бот ждёт и повторяет **тот же** запрос с тем же курсором. Пауза растёт 1, 2, 4… секунд до 60, а после удачного запроса сбрасывается. В лог попадает предупреждение с классом ошибки, HTTP-статусом, номером попытки и паузой, но без адреса, заголовков и тела ответа.
 
 ```python
-router.run_polling(state_path=".bot-state.json", retry_initial_delay=1.0, retry_max_delay=60.0)
+router.run_polling(
+    state_path=".bot-state.json", retry_initial_delay=1.0, retry_max_delay=60.0
+)
 ```
 
 Остальные ошибки опроса (`ResetRequired`, 401, 403, 404, `ProtocolError`, `SessionStorageError`) завершают `run_polling` как раньше. `RateLimitError` по-прежнему обрабатывается своей паузой из [лимитов](RATE_LIMITS.md#если-пришёл-429).
@@ -424,6 +437,7 @@ import logging
 import httpx
 
 from itd_bot import ErrorAction
+
 
 @router.on_error()
 def handle_error(error, event):

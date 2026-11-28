@@ -7,9 +7,11 @@ from itd_bot import Bot, CommandContext, MessageContext, Router, filters
 
 commands = Router()
 
+
 @commands.message(filters.command("start"))
 def start(ctx: CommandContext) -> None:
     ctx.reply("Здравствуйте! Напишите /start текст")
+
 
 with Bot.from_env() as bot:
     router = Router.from_bot(bot, match="first", **bot.dispatcher_options)
@@ -26,13 +28,16 @@ with Bot.from_env() as bot:
 def chat_message(ctx):
     ctx.reply("Сообщение получено")
 
+
 @commands.message(filters.text("помощь") | filters.regex(r"^help\b"))
 def help_message(ctx):
     ctx.reply("Напишите /start")
 
+
 @commands.message(filters.command("echo", prefix="!"), lambda ctx: bool(ctx.args))
 def echo(ctx):
     ctx.reply(ctx.args)
+
 
 @commands.on_event("message_edited", filters.event_type("message_edited"))
 def edited(ctx):

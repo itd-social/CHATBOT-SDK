@@ -19,6 +19,7 @@ for entity in message_stickers(sample):
 ```python
 from itd_bot import MessageContext, filters, message_stickers
 
+
 @router.message(filters.sticker() & filters.chat("CHAT_ID"))
 def incoming(ctx: MessageContext) -> None:
     entities = message_stickers(ctx.message)

@@ -115,11 +115,23 @@ Bot.from_env(**kwargs)
 ### poll
 
 ```python
-poll(since, handler, interval=2.0, on_checkpoint=None,
-     websocket=False, workers=1, min_fetch_interval=0.2,
-     retry_initial_delay=1.0, retry_max_delay=60.0,
-     on_error=None, handler_retries=3, stop=None,
-     chat_queues=False, chat_queue_size=64, source="poll")
+poll(
+    since,
+    handler,
+    interval=2.0,
+    on_checkpoint=None,
+    websocket=False,
+    workers=1,
+    min_fetch_interval=0.2,
+    retry_initial_delay=1.0,
+    retry_max_delay=60.0,
+    on_error=None,
+    handler_retries=3,
+    stop=None,
+    chat_queues=False,
+    chat_queue_size=64,
+    source="poll",
+)
 ```
 
 Обрабатывает пакет и передаёт новый курсор в `on_checkpoint`. Если пакет был непустым и сдвинул курсор, следующий запрашивается сразу, иначе бот ждёт `interval`.
@@ -235,9 +247,11 @@ python -m mypy --strict itd_bot
 ```python
 from itd_bot import MessageContext, UpdatesResponse
 
+
 def first_type(batch: UpdatesResponse) -> str | None:
     events = batch.get("events", [])
     return events[0].get("type") if events else None
+
 
 def sender(ctx: MessageContext) -> str | None:
     return ctx.message.get("sender_id")
