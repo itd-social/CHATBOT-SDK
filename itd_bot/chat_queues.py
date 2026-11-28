@@ -32,10 +32,12 @@ class _ChatQueues:
         cursor: int,
         workers: int,
         capacity: int,
+        allow_unsequenced: bool = False,
     ) -> None:
         self.cursor = cursor
         self._handler, self._checkpoint = handler, checkpoint
         self._capacity = capacity
+        self._allow_unsequenced = allow_unsequenced
         self._total_capacity = max(2, workers) * capacity
         self._executor = ThreadPoolExecutor(workers, "itd-chat")
         self._condition = threading.Condition()
@@ -100,8 +102,12 @@ class _ChatQueues:
     ) -> None:
         events, next_seq = batch["events"], batch["next_event_seq"]
         previous = since
+        cursors = []
         for event in events:
             seq = event.get("event_seq")
+            if seq is None and self._allow_unsequenced:
+                cursors.append(previous)
+                continue
             if (
                 isinstance(seq, bool)
                 or not isinstance(seq, int)
@@ -111,12 +117,13 @@ class _ChatQueues:
                     "Chat queues require increasing per-event event_seq"
                 )
             previous = seq
+            cursors.append(seq)
         if next_seq < since:
             raise ProtocolError("Updates cursor moved backwards without a reset")
-        for event in events:
+        for event, cursor in zip(events, cursors, strict=True):
             chat_id = event.get("chat_id")
             key = chat_id if isinstance(chat_id, str) else None
-            self._enqueue(_Entry(event["event_seq"]), event, key, handler)
+            self._enqueue(_Entry(cursor), event, key, handler)
         if next_seq > since:
             self._enqueue(_Entry(next_seq, done=True), None, None)
 
@@ -204,8 +211,11 @@ def _poll_chat_queues(
     retry_initial: float,
     retry_max: float,
     prepare: Callable[[list[UpdateEvent]], Callable[[UpdateEvent], None]] | None = None,
+    allow_unsequenced: bool = False,
 ) -> None:
-    queues = _ChatQueues(handler, checkpoint, since, workers, capacity)
+    queues = _ChatQueues(
+        handler, checkpoint, since, workers, capacity, allow_unsequenced
+    )
     fetch_failures = read_failures = 0
     completed = since
     last_fetch: float | None = None
@@ -276,7 +286,9 @@ def _poll_chat_queues(
                     read_failures,
                     delay,
                 )
-                queues = _ChatQueues(handler, checkpoint, since, workers, capacity)
+                queues = _ChatQueues(
+                    handler, checkpoint, since, workers, capacity, allow_unsequenced
+                )
                 if pause(stop, delay):
                     clean = True
                     return

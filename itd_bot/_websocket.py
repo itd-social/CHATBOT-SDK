@@ -5,7 +5,8 @@ from __future__ import annotations
 import json as jsonlib
 import logging
 import threading
-from collections.abc import Callable, Iterator
+import time
+from collections.abc import Callable, Generator, Iterator
 from typing import TYPE_CHECKING, cast
 from urllib.parse import urlsplit
 
@@ -31,7 +32,8 @@ def websocket_events(
     *,
     stop: threading.Event | None = None,
     pause_wait: Callable[[threading.Event | None, float], bool],
-) -> Iterator[UpdateEvent]:
+    on_connect: Callable[[], object] | None = None,
+) -> Generator[UpdateEvent, None, None]:
     """Yield live frames until disconnected; use get_updates to recover gaps.
 
     Close codes 4001/4003 refresh an available session and reconnect, at most
@@ -43,7 +45,16 @@ def websocket_events(
     for attempt in range(_WS_AUTH_RETRIES + 1):
         access_token, generation = self._access_state()
         try:
-            yield from self._websocket_events_once(access_token, stop=stop)
+            if on_connect is None:
+                yield from self._websocket_events_once(access_token, stop=stop)
+            else:
+                yield from _websocket_events_once(
+                    self,
+                    access_token,
+                    stop=stop,
+                    monotonic=time.monotonic,
+                    on_connect=on_connect,
+                )
             return
         except _WebSocketClosed as exc:
             if (
@@ -69,6 +80,7 @@ def _websocket_events_once(
     *,
     stop: threading.Event | None,
     monotonic: Callable[[], float],
+    on_connect: Callable[[], object] | None = None,
 ) -> Iterator[UpdateEvent]:
     import websocket
 
@@ -100,6 +112,8 @@ def _websocket_events_once(
         handshake = conn.handshake_response
         if handshake is None or handshake.status != 101:
             raise ProtocolError("WebSocket handshake failed")
+        if on_connect is not None:
+            on_connect()
         last_ping = last_frame = monotonic()
         while stop is None or not stop.is_set():
             now = monotonic()
