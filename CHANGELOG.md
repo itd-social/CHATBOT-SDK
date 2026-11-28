@@ -4,6 +4,42 @@
 
 <!-- version list -->
 
+## [1.5.0](https://github.com/itd-social/CHATBOT-SDK/compare/v1.4.0...v1.5.0) (2026-11-28)
+
+### ✨ Новые возможности
+
+* **events:** Добавлен источник WebSocket с восстановлением через HTTP ([#65](https://github.com/itd-social/CHATBOT-SDK/pull/65), [ad17587](https://github.com/itd-social/CHATBOT-SDK/commit/ad175870c086a92a6111ea2420afdc4d22fee6d4))
+* **messages:** Добавлена опциональная проверка клиентских лимитов ([#62](https://github.com/itd-social/CHATBOT-SDK/pull/62), [9ebeabc](https://github.com/itd-social/CHATBOT-SDK/commit/9ebeabc07c7f8284d92bd7b617e979fd5775c3ed))
+* **stickers:** Добавлено чтение сущностей стикеров ([#64](https://github.com/itd-social/CHATBOT-SDK/pull/64), [2e75856](https://github.com/itd-social/CHATBOT-SDK/commit/2e7585623e487a0e431c7ba09178d49d8f34e979))
+* **fsm:** Добавлены состояния диалогов и подключаемые хранилища ([#63](https://github.com/itd-social/CHATBOT-SDK/pull/63), [f8d0340](https://github.com/itd-social/CHATBOT-SDK/commit/f8d03409464ed1bb513e1bba9ff82393fd207fa1))
+* **router:** Добавлены фильтры, middleware и вложенные обработчики ([#61](https://github.com/itd-social/CHATBOT-SDK/pull/61), [9b303cd](https://github.com/itd-social/CHATBOT-SDK/commit/9b303cd761f8b1073c506c198c1331cabdebf6c2))
+
+### ♻️ Рефакторинг
+
+* **types:** Добавлены подсказки mypy для ответов и строгая проверка SDK ([#59](https://github.com/itd-social/CHATBOT-SDK/pull/59), [257bc6a](https://github.com/itd-social/CHATBOT-SDK/commit/257bc6a3ed689f0e923344cc6ea181bd4119f30c))
+* **client:** Реализации транспорта, файлов и событий вынесены во внутренние модули ([#57](https://github.com/itd-social/CHATBOT-SDK/pull/57), [060f166](https://github.com/itd-social/CHATBOT-SDK/commit/060f16662c0b7b36919337f81deaf367d71430f1))
+
+### 📚 Документация
+
+* **events:** Подтверждён приём typing и presence по WebSocket ([#65](https://github.com/itd-social/CHATBOT-SDK/pull/65), [ad17587](https://github.com/itd-social/CHATBOT-SDK/commit/ad175870c086a92a6111ea2420afdc4d22fee6d4))
+* **events:** Уточнены результаты живой проверки WebSocket ([#65](https://github.com/itd-social/CHATBOT-SDK/pull/65), [ad17587](https://github.com/itd-social/CHATBOT-SDK/commit/ad175870c086a92a6111ea2420afdc4d22fee6d4))
+
+### 🛠 Прочее
+
+* **deps:** bump ruff ([#60](https://github.com/itd-social/CHATBOT-SDK/pull/60), [b1a3301](https://github.com/itd-social/CHATBOT-SDK/commit/b1a3301efe854b7b5c697c502d3392c566a0ae72))
+* **dev:** Синхронизирован Ruff в pre-commit ([#66](https://github.com/itd-social/CHATBOT-SDK/pull/66), [7b2fadb](https://github.com/itd-social/CHATBOT-SDK/commit/7b2fadb91c21eef4674289a9b6c7730dc123a032))
+
+### 👷 CI
+
+* **bundle:** Добавлены опись API и ручная проверка расхождений бандла ([#58](https://github.com/itd-social/CHATBOT-SDK/pull/58), [d88aebb](https://github.com/itd-social/CHATBOT-SDK/commit/d88aebb9b14e331dbc6f72d33ed97926929250ea))
+* **bundle:** Добавлены опись API мессенджера и проверка расхождений бандла ([#58](https://github.com/itd-social/CHATBOT-SDK/pull/58), [d88aebb](https://github.com/itd-social/CHATBOT-SDK/commit/d88aebb9b14e331dbc6f72d33ed97926929250ea))
+* **bundle:** Область проверки ограничена API мессенджера ([#58](https://github.com/itd-social/CHATBOT-SDK/pull/58), [d88aebb](https://github.com/itd-social/CHATBOT-SDK/commit/d88aebb9b14e331dbc6f72d33ed97926929250ea))
+
+### ℹ️ Дополнительно
+
+* **types:** В проектах с mypy появились более точные подсказки типов; может потребоваться уточнить аннотации обработчиков и переменных. Ответы остаются обычными словарями.
+
+
 ## [1.4.0](https://github.com/itd-social/CHATBOT-SDK/compare/v1.3.1...v1.4.0) (2026-11-27)
 
 ### ✨ Новые возможности
